@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - master
+      - claude/unzip-push-git-sqgyvg
   workflow_dispatch:
 
 permissions:
