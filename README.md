@@ -39,7 +39,21 @@ python -m http.server 8000
 # then visit http://localhost:8000
 ```
 
-(Or `npx serve`, etc.) On GitHub Pages this lives at the repo root.
+(Or `npx serve`, etc.)
+
+### GitHub Pages
+
+All asset paths are relative, so the app works whether it's served from a
+domain root or a project subpath like `https://<user>.github.io/Interval/`.
+A workflow at `.github/workflows/deploy.yml` publishes the site automatically:
+
+1. In the repo, go to **Settings → Pages → Build and deployment**.
+2. Set **Source** to **GitHub Actions**.
+3. Push to the default branch (`main`/`master`) — the workflow builds and
+   deploys, and the live URL appears in the Actions run summary.
+
+The included `.nojekyll` file disables Jekyll processing so all files are
+served as-is.
 
 ## Install to home screen
 
