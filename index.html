@@ -274,7 +274,10 @@
   .itemcard .ihead b{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .itemcard .ihead .badge{font-size:11px;color:var(--muted);background:var(--panel2);padding:3px 9px;border-radius:7px;white-space:nowrap}
   .itemcard .ihead .badge.ok{color:#04210f;background:var(--accent)}
-  .setrow{display:grid;grid-template-columns:1fr 64px 64px 34px;gap:7px;align-items:center;padding:5px 0}
+  .swipe{position:relative;overflow:hidden;border-radius:9px}
+  .swipe-del{position:absolute;inset:0 0 0 auto;width:84px;border:0;background:var(--danger);color:#fff;font-weight:700;font-size:13px;cursor:pointer}
+  .swipe-del:active{filter:brightness(.9)}
+  .setrow{display:grid;grid-template-columns:1fr 64px 64px 34px;gap:7px;align-items:center;padding:5px 4px;background:var(--panel);position:relative;transition:transform .18s ease;touch-action:pan-y}
   .setrow .si{color:var(--muted);font-size:13px}
   .setrow input[type=number]{
     width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);
@@ -1059,8 +1062,50 @@
     input.addEventListener('input',()=>{ if(input.value!==''){ set(Number(input.value)||0); saveActive(); } });
     input.addEventListener('blur',()=>{ if(input.value===''){ set(Number(input.dataset.prev)||0); input.value=input.dataset.prev; } saveActive(); });
   }
+  // swipe a set row left to reveal its Delete button (the reveal is the confirm)
+  const SWIPE_W=84;
+  let openSwipe=null;
+  function closeSwipe(){ if(openSwipe){ openSwipe.style.transform=''; openSwipe=null; } }
+  document.addEventListener('pointerdown',(e)=>{
+    if(openSwipe && !e.target.closest('.swipe')) closeSwipe();
+  }, true);
+  function makeSwipe(row){
+    let startX=0, startY=0, dx=0, swiping=false, decided=false;
+    row.addEventListener('pointerdown',(e)=>{
+      if(e.pointerType==='mouse' && e.button!==0) return;
+      if(openSwipe && openSwipe!==row) closeSwipe();
+      startX=e.clientX; startY=e.clientY; dx=0; swiping=false; decided=false;
+    });
+    row.addEventListener('pointermove',(e)=>{
+      const mx=e.clientX-startX, my=e.clientY-startY;
+      if(!decided){
+        if(Math.abs(mx)<6 && Math.abs(my)<6) return;
+        decided=true;
+        if(Math.abs(mx)>Math.abs(my)){ swiping=true; row.setPointerCapture?.(e.pointerId); }
+        else return; // vertical intent → let the list scroll
+      }
+      if(!swiping) return;
+      e.preventDefault();
+      const base = openSwipe===row ? -SWIPE_W : 0;
+      dx = Math.max(-SWIPE_W, Math.min(0, base+mx));
+      row.style.transition='none';
+      row.style.transform=`translateX(${dx}px)`;
+    });
+    function end(){
+      row.style.transition='';
+      if(swiping){
+        swiping=false;
+        if(dx <= -40){ row.style.transform=`translateX(${-SWIPE_W}px)`; openSwipe=row; }
+        else { row.style.transform=''; if(openSwipe===row) openSwipe=null; }
+      } else if(openSwipe===row){
+        closeSwipe();   // a tap on an already-open row closes it
+      }
+    }
+    row.addEventListener('pointerup',end);
+    row.addEventListener('pointercancel',end);
+  }
   function renderSessionItems(){
-    const wrap=$('#sessionItems'); wrap.innerHTML='';
+    const wrap=$('#sessionItems'); wrap.innerHTML=''; openSwipe=null;
     activeSession.items.forEach(item=>{
       const card=document.createElement('div'); card.className='itemcard';
       if(item.collapsed) card.classList.add('collapsed');
@@ -1079,6 +1124,8 @@
         const badgeEl=card.querySelector('.badge');
         const list=card.querySelector('.setlist');
         item.sets.forEach((s,si)=>{
+          const swipe=document.createElement('div'); swipe.className='swipe';
+          const delBtn=document.createElement('button'); delBtn.className='swipe-del'; delBtn.type='button'; delBtn.textContent='Delete';
           const row=document.createElement('div'); row.className='setrow';
           row.innerHTML=`
             <div class="si">Set ${si+1}</div>
@@ -1099,7 +1146,14 @@
             if(allDone){ item.collapsed=true; card.classList.add('collapsed'); } // animated auto-minimise
             saveActive();
           });
-          list.appendChild(row);
+          delBtn.addEventListener('click',()=>{
+            item.sets.splice(si,1);
+            item.done = item.sets.length>0 && item.sets.every(x=>x.done); // recompute
+            saveActive(); renderSessionItems();
+          });
+          makeSwipe(row);
+          swipe.appendChild(delBtn); swipe.appendChild(row);
+          list.appendChild(swipe);
         });
         card.querySelector('[data-act=addset]').addEventListener('click',()=>{
           const last=item.sets[item.sets.length-1];
