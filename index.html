@@ -49,7 +49,7 @@
   }
   .iconbtn:active{transform:scale(.94)}
 
-  main{flex:1;padding-bottom:96px}
+  main{flex:1;padding-bottom:108px}
   .view{display:none}
   .view.active{display:block;animation:fade .2s ease}
   @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -175,9 +175,10 @@
   /* ---- bottom nav ---- */
   nav.tabs{
     position:fixed;left:0;right:0;bottom:0;z-index:40;
-    display:flex;justify-content:center;gap:6px;
-    padding:8px 8px calc(var(--safe-b) + 8px);
-    background:linear-gradient(to top,var(--bg) 70%,transparent);
+    width:100%;max-width:520px;margin:0 auto;box-sizing:border-box;
+    display:flex;justify-content:center;gap:8px;
+    padding:10px 16px calc(var(--safe-b) + 20px);
+    background:linear-gradient(to top,var(--bg) 78%,transparent);
   }
   nav.tabs button{
     flex:1;max-width:240px;background:var(--panel);border:1px solid var(--line);color:var(--muted);
@@ -478,6 +479,10 @@
   <div class="sheet">
     <h2 id="exPickerTitle">Add exercise</h2>
     <div id="exPickerList"></div>
+    <div class="saverow">
+      <input type="text" id="newExName" placeholder="New exercise…" maxlength="32" autocomplete="off">
+      <button class="iconbtn" id="newExOk" style="width:auto;padding:0 16px">OK</button>
+    </div>
   </div>
 </div>
 
@@ -490,7 +495,8 @@
   const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
   const LS = {
     config:'interval.config', presets:'interval.presets',
-    log:'interval.log', settings:'interval.settings'
+    log:'interval.log', settings:'interval.settings',
+    exercises:'interval.exercises'
   };
   const load = (k,def)=>{ try{ const v=localStorage.getItem(k); return v==null?def:JSON.parse(v);}catch(e){return def;} };
   const save = (k,v)=>{ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} };
@@ -1082,13 +1088,26 @@
   }
 
   // ---------- Exercise picker (bottom sheet) ----------
-  const PICKER_EXERCISES=['Kettlebell Spin','Kettlebell Superman','Push-Up','Box'];
+  // The catalog is a persistent list of exercise names. Adding a new one here
+  // creates a real data entry (so its history can be looked up elsewhere later).
+  const DEFAULT_EXERCISES=['Kettlebell Spin','Kettlebell Superman','Push-Up','Box'];
+  function getCatalog(){ const c=load(LS.exercises,null); return Array.isArray(c)&&c.length?c:DEFAULT_EXERCISES.slice(); }
+  function addToCatalog(name){
+    const cat=getCatalog();
+    if(cat.some(n=>n.toLowerCase()===name.toLowerCase())) return cat; // dedupe (case-insensitive)
+    cat.push(name); save(LS.exercises,cat); return cat;
+  }
   let pickerCtx=null; // {mode:'exercise'} | {mode:'move', item}
+  function renderPickerList(){
+    const cat=getCatalog();
+    $('#exPickerList').innerHTML=cat.map(n=>`<button class="pickrow">${escapeHtml(n)}</button>`).join('');
+    $$('#exPickerList .pickrow').forEach((b,i)=>b.addEventListener('click',()=>pickExercise(cat[i])));
+  }
   function openPicker(ctx){
     pickerCtx=ctx;
     $('#exPickerTitle').textContent = ctx.mode==='move' ? 'Add exercise to block' : 'Add exercise';
-    $('#exPickerList').innerHTML=PICKER_EXERCISES.map(n=>`<button class="pickrow">${escapeHtml(n)}</button>`).join('');
-    $$('#exPickerList .pickrow').forEach((b,i)=>b.addEventListener('click',()=>pickExercise(PICKER_EXERCISES[i])));
+    $('#newExName').value='';
+    renderPickerList();
     $('#exPicker').classList.add('show');
   }
   function closePicker(){ $('#exPicker').classList.remove('show'); pickerCtx=null; }
@@ -1102,6 +1121,15 @@
     closePicker();
     renderSessionItems();
   }
+  function addNewExercise(){
+    const name=$('#newExName').value.trim();
+    if(!name) return;
+    addToCatalog(name);   // persist so it shows in the list next time + history can attach
+    $('#newExName').value='';
+    pickExercise(name);   // and use it for the current add
+  }
+  $('#newExOk').addEventListener('click',addNewExercise);
+  $('#newExName').addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ e.preventDefault(); addNewExercise(); } });
   $('#exPickerScrim').addEventListener('click',closePicker);
 
   $('#startSessionBtn').addEventListener('click',()=>{ activeSession=freshMockSession(); renderWorkout(); });
