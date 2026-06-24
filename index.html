@@ -318,7 +318,8 @@
     border-radius:13px;padding:12px;font-size:14px;cursor:pointer;
   }
   .addtype button:active{transform:scale(.97)}
-  .finishbtn{background:linear-gradient(160deg,#f87171,#ef4444)!important;color:#2a0a0a!important}
+  .finishbtn{background:linear-gradient(160deg,#34d399,#22c55e)!important;color:#04210f!important}
+  .cancelbtn{margin-top:10px;background:var(--panel2)!important;color:var(--muted)!important;border:1px solid var(--line)!important;font-size:16px!important}
 </style>
 </head>
 <body>
@@ -368,13 +369,17 @@
           <button id="addHiitBtn">+ HIIT</button>
         </div>
         <button class="bigbtn finishbtn" id="finishSessionBtn">Finish workout</button>
+        <button class="bigbtn cancelbtn" id="cancelSessionBtn">Cancel workout</button>
         <div style="height:8px"></div>
       </div>
     </section>
 
     <!-- ===== LOG ===== -->
     <section id="log" class="view">
-      <h2 class="sectiontitle">Sessions</h2>
+      <h2 class="sectiontitle">Lifetime</h2>
+      <div class="stats-grid" id="funStats"></div>
+
+      <h2 class="sectiontitle" style="margin-top:22px">Sessions</h2>
       <div id="sessionLogList"></div>
 
       <div class="linkrow" style="margin-top:22px">
@@ -1360,6 +1365,13 @@
     saveActive(); renderSessionItems();
   });
   $('#finishSessionBtn').addEventListener('click',finishSession);
+  $('#cancelSessionBtn').addEventListener('click',()=>{
+    if(!activeSession) return;
+    // discard the in-progress workout without saving it to the log
+    if(activeSession.items.length && !confirm('Cancel this workout? Nothing will be saved.')) return;
+    activeSession=null; activeHiitItem=null; saveActive();
+    toast('Workout cancelled'); renderWorkout();
+  });
   function finishSession(){
     if(!activeSession) return;
     if(!activeSession.items.length){
@@ -1388,6 +1400,31 @@
       const mv=it.moves.map(m=>escapeHtml(m.name)+(m.kg?` ${m.kg}kg`:'')).join(', ');
       return `<div class="ditem"><b>${escapeHtml(it.name)}</b><div class="dsub">HIIT · ran ${it.runs||0}×${mv?' · '+mv:''}</div></div>`;
     }).join('') || '<div class="dsub">No exercises logged.</div>';
+  }
+  function renderFunStats(){
+    const el=$('#funStats'); if(!el) return;
+    const sessions=getSessions();
+    let vol=0, sets=0, runs=0; const freq={};
+    sessions.forEach(s=>{
+      vol+=sessionVolume(s); sets+=sessionSetCount(s);
+      s.items.forEach(it=>{
+        if(it.type==='hiit'){ runs+=it.runs||0; (it.moves||[]).forEach(m=>freq[m.name]=(freq[m.name]||0)+1); }
+        else freq[it.name]=(freq[it.name]||0)+1;
+      });
+    });
+    const top=Object.entries(freq).sort((a,b)=>b[1]-a[1])[0];
+    const best=sessions.reduce((m,s)=>Math.max(m,sessionVolume(s)),0);
+    const tonnes=vol>=1000?(vol/1000).toFixed(1)+' t':vol+' kg';
+    const stats=[
+      ['🏋️', tonnes, 'lifted all-time'],
+      ['🔥', computeSessionStreak(sessions)+'', 'day streak'],
+      ['💪', sessions.length+'', 'workouts'],
+      ['📊', sets+'', 'sets logged'],
+      ['⚡', runs+'', 'HIIT runs'],
+      ['🏆', top?escapeHtml(top[0]):'—', top?`favourite (${top[1]}×)`:'favourite'],
+      ['👑', best?best+' kg':'—', 'biggest session'],
+    ];
+    el.innerHTML=stats.map(([emo,b,sub])=>`<div class="stat"><b>${emo} ${b}</b><span>${sub}</span></div>`).join('');
   }
   function renderSessionLog(){
     const sessions=getSessions();
@@ -1429,7 +1466,7 @@
     $('#tabLog').classList.toggle('active', name==='log');
     if(name==='dashboard') renderDashboard();
     if(name==='workout') renderWorkout();
-    if(name==='log'){ renderSessionLog(); renderLog(); }
+    if(name==='log'){ renderFunStats(); renderSessionLog(); renderLog(); }
   }
   $('#tabDash').addEventListener('click',()=>showView('dashboard'));
   $('#tabWorkout').addEventListener('click',()=>showView('workout'));
