@@ -184,7 +184,7 @@
   /* ---- bottom nav ---- */
   nav.tabs{
     z-index:40;display:flex;justify-content:center;gap:8px;
-    padding:12px 0 calc(var(--safe-b) + 20px);
+    padding:8px 0 calc(var(--safe-b) + 4px);
     background:var(--bg);border-top:1px solid var(--line);
   }
   nav.tabs button{
@@ -226,10 +226,21 @@
   }
   #exPicker h2{margin:2px 0 14px;font-size:18px}
   .pickitem{display:flex;gap:8px;margin-bottom:8px}
-  .pickrow{flex:1;text-align:left;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:12px;padding:14px;font-size:15px;cursor:pointer}
+  .pickrow{flex:1;text-align:left;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:12px;padding:14px;font-size:15px;cursor:pointer;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .pickrow:active{transform:scale(.98)}
+  .pickcat{flex:none;width:96px;background:var(--panel2);border:1px solid var(--line);color:var(--muted);border-radius:12px;font-size:12px;padding:0 6px;cursor:pointer}
   .pickdel{flex:none;width:46px;background:var(--panel2);border:1px solid var(--line);color:var(--muted);border-radius:12px;font-size:15px;cursor:pointer}
   .pickdel:active{transform:scale(.94);color:var(--danger);border-color:var(--danger)}
+  /* category groups in the picker — collapsed by default */
+  .pickgroup{border:1px solid var(--line);border-radius:12px;margin-bottom:8px;overflow:hidden}
+  .pickgrouphd{display:flex;align-items:center;gap:8px;padding:12px 14px;cursor:pointer;background:var(--panel2);-webkit-user-select:none;user-select:none}
+  .pickgrouphd b{font-size:14px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pickgrouphd .chev{color:var(--muted);font-size:11px;transition:transform .18s ease}
+  .pickgroup:not(.open) .pickgrouphd .chev{transform:rotate(-90deg)}
+  .pickgrouphd .gcount{font-size:11px;color:var(--muted);background:var(--panel);padding:2px 8px;border-radius:7px}
+  .catedit{flex:none;width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--muted);cursor:pointer;font-size:13px}
+  .pickgroupbody{display:none;padding:10px 10px 2px}
+  .pickgroup.open .pickgroupbody{display:block}
 
   .toast{
     position:fixed;left:50%;bottom:calc(var(--safe-b) + 92px);transform:translateX(-50%) translateY(20px);
@@ -278,6 +289,8 @@
   .swipe-del{position:absolute;inset:0 0 0 auto;width:84px;border:0;background:var(--danger);color:#fff;font-weight:700;font-size:13px;cursor:pointer}
   .swipe-del:active{filter:brightness(.9)}
   .setrow{display:grid;grid-template-columns:1fr 64px 64px 34px;gap:7px;align-items:center;padding:5px 4px;background:var(--panel);position:relative;transition:transform .18s ease;touch-action:pan-y}
+  .setrow.moverow{grid-template-columns:1fr 64px auto 34px}
+  .moverow .amrap{font-size:10px;font-weight:700;letter-spacing:.5px;color:var(--muted);text-align:center}
   .setrow .si{color:var(--muted);font-size:13px}
   .setrow input[type=number]{
     width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);
@@ -500,6 +513,10 @@
       <input type="text" id="newExName" placeholder="New exercise…" maxlength="32" autocomplete="off">
       <button class="iconbtn" id="newExOk" style="width:auto;padding:0 16px">OK</button>
     </div>
+    <div class="saverow">
+      <input type="text" id="newCatName" placeholder="New category…" maxlength="24" autocomplete="off">
+      <button class="iconbtn" id="newCatOk" style="width:auto;padding:0 16px">＋</button>
+    </div>
   </div>
 </div>
 
@@ -514,6 +531,7 @@
     config:'interval.config', presets:'interval.presets',
     log:'interval.log', settings:'interval.settings',
     exercises:'interval.exercises',
+    categories:'interval.categories', excat:'interval.excat', exmeta:'interval.exmeta',
     sessions:'interval.sessions', active:'interval.active'
   };
   const uid = ()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
@@ -1172,15 +1190,14 @@
           </div></div>`;
         const list=card.querySelector('.setlist');
         item.moves.forEach((m,mi)=>{
-          const row=document.createElement('div'); row.className='setrow';
+          const row=document.createElement('div'); row.className='setrow moverow';
           row.innerHTML=`
             <div class="si">${escapeHtml(m.name)}</div>
             <input type="number" inputmode="decimal" value="${m.kg}" placeholder="kg">
-            <input type="number" inputmode="numeric" value="${m.reps}" placeholder="reps">
+            <span class="amrap">AMRAP</span>
             <button class="delx" data-act="delmove" aria-label="Remove">✕</button>`;
-          const [kgI,repsI]=row.querySelectorAll('input');
+          const kgI=row.querySelector('input');
           bindNumInput(kgI, ()=>m.kg, v=>m.kg=v);
-          bindNumInput(repsI, ()=>m.reps, v=>m.reps=v);
           row.querySelector('[data-act=delmove]').addEventListener('click',()=>{
             item.moves.splice(mi,1); saveActive(); renderSessionItems();
           });
@@ -1224,32 +1241,99 @@
   }
   function removeFromCatalog(name){
     save(LS.exercises, getCatalog().filter(n=>n.toLowerCase()!==name.toLowerCase()));
+    const m=getExCatMap(); delete m[name.toLowerCase()]; save(LS.excat,m); // drop its category link too
+  }
+  // ---- categories (ordered list of names) + name→category map ----
+  function getCategories(){ const c=load(LS.categories,null); return Array.isArray(c)?c:[]; }
+  function saveCategories(arr){ save(LS.categories,arr); }
+  function addCategory(name){
+    name=name.trim(); if(!name) return;
+    const cats=getCategories();
+    if(cats.some(c=>c.toLowerCase()===name.toLowerCase())) return; // dedupe
+    cats.push(name); saveCategories(cats);
+  }
+  function renameCategory(oldName,newName){
+    newName=newName.trim(); if(!newName) return;
+    const cats=getCategories().map(c=>c===oldName?newName:c); saveCategories(cats);
+    const m=getExCatMap(); // repoint any exercises that were in the old category
+    Object.keys(m).forEach(k=>{ if(m[k]===oldName) m[k]=newName; }); save(LS.excat,m);
+  }
+  function getExCatMap(){ const m=load(LS.excat,null); return (m&&typeof m==='object')?m:{}; }
+  function getExCat(name){ return getExCatMap()[name.toLowerCase()]||null; }
+  function setExCat(name,cat){
+    const m=getExCatMap();
+    if(cat) m[name.toLowerCase()]=cat; else delete m[name.toLowerCase()];
+    save(LS.excat,m);
+  }
+  // ---- last-used kg/reps per exercise (global, updated when a workout finishes) ----
+  function getExMetaMap(){ const m=load(LS.exmeta,null); return (m&&typeof m==='object')?m:{}; }
+  function getExMeta(name){ return getExMetaMap()[name.toLowerCase()]||null; }
+  function setExMeta(name,kg,reps){
+    const m=getExMetaMap(); m[name.toLowerCase()]={kg:Number(kg)||0, reps:Number(reps)||0}; save(LS.exmeta,m);
   }
   let pickerCtx=null; // {mode:'exercise'} | {mode:'move', item}
+  const pickerOpenCats=new Set(); // which groups are expanded; reset (collapsed) each open
   function renderPickerList(){
     const cat=getCatalog(); const el=$('#exPickerList');
     if(!cat.length){ el.innerHTML='<div class="empty" style="padding:10px 0">No saved exercises. Type one below.</div>'; return; }
-    el.innerHTML=cat.map(n=>`<div class="pickitem"><button class="pickrow">${escapeHtml(n)}</button><button class="pickdel" aria-label="Delete">🗑</button></div>`).join('');
-    $$('#exPickerList .pickitem').forEach((row,i)=>{
-      row.querySelector('.pickrow').addEventListener('click',()=>pickExercise(cat[i]));
-      row.querySelector('.pickdel').addEventListener('click',()=>{ removeFromCatalog(cat[i]); renderPickerList(); toast('Removed from list'); });
+    const cats=getCategories();
+    const groups=cats.map(c=>({name:c, key:c, items:[]}));
+    const uncat={name:'Uncategorized', key:'__none__', items:[]};
+    cat.forEach(n=>{ const c=getExCat(n); const g=groups.find(g=>g.name===c); (g||uncat).items.push(n); });
+    const all=[...groups, ...(uncat.items.length?[uncat]:[])];
+    const catOptions=name=>['<option value="">— none —</option>',
+      ...cats.map(c=>`<option value="${escapeHtml(c)}"${getExCat(name)===c?' selected':''}>${escapeHtml(c)}</option>`)].join('');
+    el.innerHTML=all.map(g=>{
+      const open=pickerOpenCats.has(g.key);
+      const rows=g.items.map(n=>`<div class="pickitem" data-name="${escapeHtml(n)}">
+          <button class="pickrow">${escapeHtml(n)}</button>
+          <select class="pickcat" aria-label="Category">${catOptions(n)}</select>
+          <button class="pickdel" aria-label="Delete">🗑</button>
+        </div>`).join('') || '<div class="empty" style="padding:6px 2px;font-size:13px">Empty</div>';
+      const rename=g.key==='__none__'?'':`<button class="catedit" aria-label="Rename">✎</button>`;
+      return `<div class="pickgroup${open?' open':''}" data-key="${escapeHtml(g.key)}">
+        <div class="pickgrouphd"><span class="chev">▾</span><b>${escapeHtml(g.name)}</b><span class="gcount">${g.items.length}</span>${rename}</div>
+        <div class="pickgroupbody">${rows}</div>
+      </div>`;
+    }).join('');
+    $$('#exPickerList .pickgroup').forEach(gEl=>{
+      const key=gEl.dataset.key;
+      gEl.querySelector('.pickgrouphd').addEventListener('click',(e)=>{
+        if(e.target.closest('.catedit')) return;
+        if(pickerOpenCats.has(key)) pickerOpenCats.delete(key); else pickerOpenCats.add(key);
+        gEl.classList.toggle('open');
+      });
+      const edit=gEl.querySelector('.catedit');
+      if(edit) edit.addEventListener('click',()=>{
+        const cur=gEl.querySelector('.pickgrouphd b').textContent;
+        const nn=prompt('Rename category', cur);
+        if(nn&&nn.trim()&&nn.trim()!==cur){ renameCategory(cur, nn.trim()); renderPickerList(); }
+      });
+      gEl.querySelectorAll('.pickitem').forEach(row=>{
+        const n=row.dataset.name;
+        row.querySelector('.pickrow').addEventListener('click',()=>pickExercise(n));
+        row.querySelector('.pickdel').addEventListener('click',()=>{ removeFromCatalog(n); renderPickerList(); toast('Removed from list'); });
+        row.querySelector('.pickcat').addEventListener('change',(e)=>{ setExCat(n, e.target.value); renderPickerList(); });
+      });
     });
   }
   function openPicker(ctx){
     pickerCtx=ctx;
     $('#exPickerTitle').textContent = ctx.mode==='move' ? 'Add exercise to block' : 'Add exercise';
-    $('#newExName').value='';
+    $('#newExName').value=''; $('#newCatName').value='';
+    pickerOpenCats.clear();   // minimized by default
     renderPickerList();
     $('#exPicker').classList.add('show');
   }
   function closePicker(){ $('#exPicker').classList.remove('show'); pickerCtx=null; }
   function pickExercise(name){
     if(!pickerCtx) return;
+    const meta=getExMeta(name); // last-used kg/reps (global)
     if(pickerCtx.mode==='move'){
-      pickerCtx.item.moves.push({name, kg:0, reps:10});
+      pickerCtx.item.moves.push({name, kg:meta?meta.kg:0}); // HIIT = AMRAP, no reps
     } else {
       if(!activeSession) activeSession=newSession();
-      activeSession.items.push({type:'exercise', name, sets:[{kg:0,reps:0,done:false}], collapsed:false, done:false});
+      activeSession.items.push({type:'exercise', name, sets:[{kg:meta?meta.kg:0, reps:meta?meta.reps:0, done:false}], collapsed:false, done:false});
     }
     saveActive();
     closePicker();
@@ -1262,8 +1346,17 @@
     $('#newExName').value='';
     pickExercise(name);   // and use it for the current add
   }
+  function addNewCategory(){
+    const name=$('#newCatName').value.trim();
+    if(!name) return;
+    addCategory(name); $('#newCatName').value='';
+    pickerOpenCats.add(name);   // show it expanded right after creating
+    renderPickerList();
+  }
   $('#newExOk').addEventListener('click',addNewExercise);
   $('#newExName').addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ e.preventDefault(); addNewExercise(); } });
+  $('#newCatOk').addEventListener('click',addNewCategory);
+  $('#newCatName').addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ e.preventDefault(); addNewCategory(); } });
   $('#exPickerScrim').addEventListener('click',closePicker);
 
   $('#startSessionBtn').addEventListener('click',()=>{ activeSession=newSession(); saveActive(); renderWorkout(); });
@@ -1281,6 +1374,10 @@
     }
     if(!confirm('Finish this workout?')) return;
     activeSession.endedAt=Date.now();
+    activeSession.items.forEach(it=>{ // remember last-used kg/reps per exercise
+      if(it.type==='exercise'){ const s=it.sets[it.sets.length-1]; if(s) setExMeta(it.name, s.kg, s.reps); }
+      else it.moves.forEach(m=>setExMeta(m.name, m.kg, 0));
+    });
     const arr=getSessions(); arr.unshift(activeSession); saveSessions(arr);
     activeSession=null; activeHiitItem=null; saveActive();
     toast('Workout saved');
@@ -1294,7 +1391,7 @@
         const rows=it.sets.map((st,i)=>`<div class="dsub">Set ${i+1}: ${st.kg||0}kg × ${st.reps||0}${st.done?' ✓':''}</div>`).join('');
         return `<div class="ditem"><b>${escapeHtml(it.name)}</b>${rows}</div>`;
       }
-      const mv=it.moves.map(m=>escapeHtml(m.name)).join(', ');
+      const mv=it.moves.map(m=>escapeHtml(m.name)+(m.kg?` ${m.kg}kg`:'')).join(', ');
       return `<div class="ditem"><b>${escapeHtml(it.name)}</b><div class="dsub">HIIT · ran ${it.runs||0}×${mv?' · '+mv:''}</div></div>`;
     }).join('') || '<div class="dsub">No exercises logged.</div>';
   }
