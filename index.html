@@ -206,6 +206,19 @@
   .sw.on::after{transform:translateX(20px)}
   #settings .done-btn{width:100%;margin-top:16px;border:0;border-radius:13px;padding:14px;font-size:16px;font-weight:700;background:var(--panel2);color:var(--text);cursor:pointer}
   .credit{text-align:center;color:var(--muted);font-size:12px;margin-top:14px}
+  /* ---- exercise picker sheet ---- */
+  #exPicker{position:fixed;inset:0;z-index:75;display:none;align-items:flex-end}
+  #exPicker.show{display:flex}
+  #exPicker .scrim{position:absolute;inset:0;background:rgba(0,0,0,.55)}
+  #exPicker .sheet{
+    position:relative;width:100%;max-width:520px;margin:0 auto;
+    background:var(--panel);border-radius:20px 20px 0 0;border:1px solid var(--line);
+    padding:18px 18px calc(var(--safe-b) + 18px);animation:slideup .25s ease;
+    max-height:80vh;overflow-y:auto;
+  }
+  #exPicker h2{margin:2px 0 14px;font-size:18px}
+  .pickrow{width:100%;text-align:left;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:12px;padding:14px;font-size:15px;cursor:pointer;margin-bottom:8px}
+  .pickrow:active{transform:scale(.98)}
 
   .toast{
     position:fixed;left:50%;bottom:calc(var(--safe-b) + 92px);transform:translateX(-50%) translateY(20px);
@@ -231,9 +244,17 @@
   .session-head h2{margin:0;font-size:19px}
   .session-head .sub{color:var(--muted);font-size:13px;margin-top:2px}
   .itemcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
-  .itemcard .ihead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px}
-  .itemcard .ihead b{font-size:15px}
+  .itemcard .ihead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;cursor:pointer;-webkit-user-select:none;user-select:none}
+  .itemcard .ihead .ttl{display:flex;align-items:center;gap:8px;min-width:0}
+  .itemcard .ihead .chev{color:var(--muted);font-size:12px;transition:transform .2s;flex:none}
+  .itemcard.collapsed .ihead{margin-bottom:0}
+  .itemcard.collapsed .ihead .chev{transform:rotate(-90deg)}
+  .itemcard.collapsed .setlist,.itemcard.collapsed .addrow,.itemcard.collapsed .hiitstart{display:none}
+  .itemcard.done{border-color:rgba(34,197,94,.45)}
+  .itemcard.done .ihead b{color:var(--muted);text-decoration:line-through}
+  .itemcard .ihead b{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .itemcard .ihead .badge{font-size:11px;color:var(--muted);background:var(--panel2);padding:3px 9px;border-radius:7px;white-space:nowrap}
+  .itemcard .ihead .badge.ok{color:#04210f;background:var(--accent)}
   .setrow{display:grid;grid-template-columns:1fr 64px 64px 34px;gap:7px;align-items:center;padding:5px 0}
   .setrow .si{color:var(--muted);font-size:13px}
   .setrow input[type=number]{
@@ -449,6 +470,14 @@
     </div>
     <button class="done-btn" id="settingsClose">Close</button>
     <p class="credit">Interval · 100% offline · data stays on this device</p>
+  </div>
+</div>
+
+<div id="exPicker">
+  <div class="scrim" id="exPickerScrim"></div>
+  <div class="sheet">
+    <h2 id="exPickerTitle">Add exercise</h2>
+    <div id="exPickerList"></div>
   </div>
 </div>
 
@@ -974,9 +1003,14 @@
     const wrap=$('#sessionItems'); wrap.innerHTML='';
     activeSession.items.forEach(item=>{
       const card=document.createElement('div'); card.className='itemcard';
+      if(item.collapsed) card.classList.add('collapsed');
+      if(item.done) card.classList.add('done');
       if(item.type==='exercise'){
+        const badge = item.done
+          ? '<span class="badge ok">✓ Done</span>'
+          : `<span class="badge">${item.sets.length} sets</span>`;
         card.innerHTML=`
-          <div class="ihead"><b>${escapeHtml(item.name)}</b><span class="badge">${item.sets.length} sets</span></div>
+          <div class="ihead"><div class="ttl"><span class="chev">▾</span><b>${escapeHtml(item.name)}</b></div>${badge}</div>
           <div class="setlist"></div>
           <button class="addrow" data-act="addset">+ Add set</button>`;
         const list=card.querySelector('.setlist');
@@ -990,19 +1024,26 @@
           const [kgI,repsI]=row.querySelectorAll('input');
           kgI.addEventListener('input',()=>{ s.kg=Number(kgI.value)||0; });
           repsI.addEventListener('input',()=>{ s.reps=Number(repsI.value)||0; });
-          row.querySelector('.check').addEventListener('click',()=>{ s.done=!s.done; renderSessionItems(); });
+          row.querySelector('.check').addEventListener('click',()=>{
+            s.done=!s.done;
+            const allDone = item.sets.length>0 && item.sets.every(x=>x.done);
+            item.done = allDone;
+            if(allDone) item.collapsed = true;       // auto-minimise when finished
+            renderSessionItems();
+          });
           list.appendChild(row);
         });
         card.querySelector('[data-act=addset]').addEventListener('click',()=>{
           const last=item.sets[item.sets.length-1];
           item.sets.push({kg:last?last.kg:0, reps:last?last.reps:0, done:false});
+          item.done=false;
           renderSessionItems();
         });
       } else {
         card.innerHTML=`
-          <div class="ihead"><b>${escapeHtml(item.name)}</b><span class="badge">Ran ${item.runs}×</span></div>
+          <div class="ihead"><div class="ttl"><span class="chev">▾</span><b>${escapeHtml(item.name)}</b></div><span class="badge">Ran ${item.runs}×</span></div>
           <div class="setlist"></div>
-          <button class="addrow" data-act="addmove">+ Add next</button>
+          <button class="addrow" data-act="addmove">+ Add exercise</button>
           <button class="hiitstart" data-act="start">▶ Start</button>`;
         const list=card.querySelector('.setlist');
         item.moves.forEach(m=>{
@@ -1018,22 +1059,47 @@
           list.appendChild(row);
         });
         card.querySelector('[data-act=addmove]').addEventListener('click',()=>{
-          item.moves.push({name:'Move '+(item.moves.length+1), kg:0, reps:10});
-          renderSessionItems();
+          openPicker({mode:'move', item});
         });
         card.querySelector('[data-act=start]').addEventListener('click',()=>{
           item.runs++; renderSessionItems();
           startWorkout(item.name);
         });
       }
+      // tap the header (title) to minimise/expand
+      card.querySelector('.ihead').addEventListener('click',(e)=>{
+        if(e.target.closest('.check')) return;
+        item.collapsed=!item.collapsed; renderSessionItems();
+      });
       wrap.appendChild(card);
     });
   }
-  $('#startSessionBtn').addEventListener('click',()=>{ activeSession=freshMockSession(); renderWorkout(); });
-  $('#addExerciseBtn').addEventListener('click',()=>{
-    activeSession.items.push({type:'exercise', name:'New Exercise', sets:[{kg:0,reps:0,done:false}]});
+
+  // ---------- Exercise picker (bottom sheet) ----------
+  const PICKER_EXERCISES=['Kettlebell Spin','Kettlebell Superman','Push-Up','Box'];
+  let pickerCtx=null; // {mode:'exercise'} | {mode:'move', item}
+  function openPicker(ctx){
+    pickerCtx=ctx;
+    $('#exPickerTitle').textContent = ctx.mode==='move' ? 'Add exercise to block' : 'Add exercise';
+    $('#exPickerList').innerHTML=PICKER_EXERCISES.map(n=>`<button class="pickrow">${escapeHtml(n)}</button>`).join('');
+    $$('#exPickerList .pickrow').forEach((b,i)=>b.addEventListener('click',()=>pickExercise(PICKER_EXERCISES[i])));
+    $('#exPicker').classList.add('show');
+  }
+  function closePicker(){ $('#exPicker').classList.remove('show'); pickerCtx=null; }
+  function pickExercise(name){
+    if(!pickerCtx) return;
+    if(pickerCtx.mode==='move'){
+      pickerCtx.item.moves.push({name, kg:0, reps:10});
+    } else {
+      activeSession.items.push({type:'exercise', name, sets:[{kg:0,reps:0,done:false}], collapsed:false, done:false});
+    }
+    closePicker();
     renderSessionItems();
-  });
+  }
+  $('#exPickerScrim').addEventListener('click',closePicker);
+
+  $('#startSessionBtn').addEventListener('click',()=>{ activeSession=freshMockSession(); renderWorkout(); });
+  $('#addExerciseBtn').addEventListener('click',()=>{ openPicker({mode:'exercise'}); });
   $('#addHiitBtn').addEventListener('click',()=>{
     activeSession.items.push({type:'hiit', name:'HIIT', moves:[], runs:0});
     renderSessionItems();
