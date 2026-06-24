@@ -87,11 +87,12 @@
   .chip .x{color:var(--muted);font-size:13px;padding:0 1px}
   .chip .x:active{color:var(--danger)}
   .saverow{display:flex;gap:8px;margin-top:12px}
-  input[type=text]{
+  input[type=text],input[type=search]{
     flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--text);
     border-radius:11px;padding:10px 12px;font-size:15px;-webkit-user-select:text;user-select:text;
   }
-  input[type=text]:focus{outline:none;border-color:var(--accent)}
+  input[type=text]:focus,input[type=search]:focus{outline:none;border-color:var(--accent)}
+  #exPickerSearch{width:100%;margin-bottom:12px;-webkit-appearance:none;appearance:none}
 
   .estimate{text-align:center;color:var(--muted);font-size:14px;margin:2px 0 16px}
   .estimate b{color:var(--text);font-variant-numeric:tabular-nums}
@@ -506,6 +507,7 @@
   <div class="scrim" id="exPickerScrim"></div>
   <div class="sheet">
     <h2 id="exPickerTitle">Add exercise</h2>
+    <input type="search" id="exPickerSearch" placeholder="Search exercises…" autocomplete="off">
     <div id="exPickerList"></div>
     <div class="saverow">
       <input type="text" id="newExName" placeholder="New exercise…" maxlength="32" autocomplete="off">
@@ -1258,9 +1260,26 @@
   }
   let pickerCtx=null; // {mode:'exercise'} | {mode:'move', item}
   const pickerOpenCats=new Set(); // which groups are expanded; reset (collapsed) each open
+  let pickerQuery='';
   function renderPickerList(){
     const cat=getCatalog(); const el=$('#exPickerList');
     if(!cat.length){ el.innerHTML='<div class="empty" style="padding:10px 0">No saved exercises. Type one below.</div>'; return; }
+    const q=pickerQuery.trim().toLowerCase();
+    if(q){ // searching: flat results, no category grouping
+      const matches=cat.filter(n=>n.toLowerCase().includes(q));
+      el.innerHTML = matches.length
+        ? matches.map(n=>`<div class="pickitem" data-name="${escapeHtml(n)}">
+            <button class="pickrow">${escapeHtml(n)}</button>
+            <button class="pickdel" aria-label="Delete">🗑</button>
+          </div>`).join('')
+        : '<div class="empty" style="padding:10px 0">No matches.</div>';
+      $$('#exPickerList .pickitem').forEach(row=>{
+        const n=row.dataset.name;
+        row.querySelector('.pickrow').addEventListener('click',()=>pickExercise(n));
+        row.querySelector('.pickdel').addEventListener('click',()=>{ removeFromCatalog(n); renderPickerList(); toast('Removed from list'); });
+      });
+      return;
+    }
     const cats=getCategories();
     const groups=cats.map(c=>({name:c, key:c, items:[]}));
     const uncat={name:'Uncategorized', key:'__none__', items:[]};
@@ -1305,7 +1324,7 @@
   function openPicker(ctx){
     pickerCtx=ctx;
     $('#exPickerTitle').textContent = ctx.mode==='move' ? 'Add exercise to block' : 'Add exercise';
-    $('#newExName').value=''; $('#newCatName').value='';
+    $('#newExName').value=''; $('#newCatName').value=''; $('#exPickerSearch').value=''; pickerQuery='';
     pickerOpenCats.clear();   // minimized by default
     renderPickerList();
     $('#exPicker').classList.add('show');
@@ -1342,6 +1361,7 @@
   $('#newExName').addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ e.preventDefault(); addNewExercise(); } });
   $('#newCatOk').addEventListener('click',addNewCategory);
   $('#newCatName').addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ e.preventDefault(); addNewCategory(); } });
+  $('#exPickerSearch').addEventListener('input',(e)=>{ pickerQuery=e.target.value; renderPickerList(); });
   $('#exPickerScrim').addEventListener('click',closePicker);
 
   $('#startSessionBtn').addEventListener('click',()=>{ activeSession=newSession(); saveActive(); renderWorkout(); });
