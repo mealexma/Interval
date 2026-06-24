@@ -27,12 +27,14 @@
     background:var(--bg); color:var(--text);
     font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
     -webkit-user-select:none; user-select:none; overscroll-behavior:none;
+    overflow:hidden;   /* lock page scroll — main scrolls internally so the nav never moves */
   }
   #app{
-    max-width:520px; margin:0 auto; min-height:100%;
-    display:flex; flex-direction:column;
+    max-width:520px; margin:0 auto; height:100%;
+    display:flex; flex-direction:column; box-sizing:border-box;
     padding:calc(var(--safe-t) + 8px) 16px 0;
   }
+  header.bar, nav.tabs{flex:none}
   header.bar{
     display:flex; align-items:center; justify-content:space-between;
     padding:6px 2px 14px;
@@ -49,7 +51,7 @@
   }
   .iconbtn:active{transform:scale(.94)}
 
-  main{flex:1;padding-bottom:108px}
+  main{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:18px}
   .view{display:none}
   .view.active{display:block;animation:fade .2s ease}
   @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -155,8 +157,15 @@
     background:var(--panel);border:1px solid var(--line);border-radius:14px;
     padding:12px 14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:10px;
   }
+  .logitem .meta{flex:1;min-width:0}
   .logitem .meta b{font-size:15px}
   .logitem .meta .sub{color:var(--muted);font-size:13px;margin-top:2px}
+  .session-row{align-items:flex-start}
+  .session-row .meta{cursor:pointer}
+  .sessdetail{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
+  .ditem{margin-bottom:8px}
+  .ditem b{font-size:13px}
+  .dsub{color:var(--muted);font-size:12px;margin-top:2px}
   .logitem .meta .tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:6px;margin-left:6px;vertical-align:middle}
   .tag.partial{background:rgba(245,158,11,.16);color:#fcd34d}
   .tag.done{background:rgba(34,197,94,.16);color:#86efac}
@@ -174,11 +183,9 @@
 
   /* ---- bottom nav ---- */
   nav.tabs{
-    position:fixed;left:0;right:0;bottom:0;z-index:40;
-    width:100%;max-width:520px;margin:0 auto;box-sizing:border-box;
-    display:flex;justify-content:center;gap:8px;
-    padding:10px 16px calc(var(--safe-b) + 20px);
-    background:linear-gradient(to top,var(--bg) 78%,transparent);
+    z-index:40;display:flex;justify-content:center;gap:8px;
+    padding:12px 0 calc(var(--safe-b) + 20px);
+    background:var(--bg);border-top:1px solid var(--line);
   }
   nav.tabs button{
     flex:1;max-width:240px;background:var(--panel);border:1px solid var(--line);color:var(--muted);
@@ -218,8 +225,11 @@
     max-height:80vh;overflow-y:auto;
   }
   #exPicker h2{margin:2px 0 14px;font-size:18px}
-  .pickrow{width:100%;text-align:left;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:12px;padding:14px;font-size:15px;cursor:pointer;margin-bottom:8px}
+  .pickitem{display:flex;gap:8px;margin-bottom:8px}
+  .pickrow{flex:1;text-align:left;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:12px;padding:14px;font-size:15px;cursor:pointer}
   .pickrow:active{transform:scale(.98)}
+  .pickdel{flex:none;width:46px;background:var(--panel2);border:1px solid var(--line);color:var(--muted);border-radius:12px;font-size:15px;cursor:pointer}
+  .pickdel:active{transform:scale(.94);color:var(--danger);border-color:var(--danger)}
 
   .toast{
     position:fixed;left:50%;bottom:calc(var(--safe-b) + 92px);transform:translateX(-50%) translateY(20px);
@@ -256,6 +266,9 @@
   .cardbody-inner{overflow:hidden;min-height:0;transition:opacity .18s ease}
   .itemcard.collapsed .cardbody{grid-template-rows:0fr}
   .itemcard.collapsed .cardbody-inner{opacity:0}
+  .itemcard .ihead .right{display:flex;align-items:center;gap:8px;flex:none}
+  .delx{width:26px;height:26px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--muted);display:grid;place-items:center;font-size:13px;cursor:pointer;flex:none;padding:0;line-height:1}
+  .delx:active{transform:scale(.9);color:var(--danger);border-color:var(--danger)}
   .itemcard.done{border-color:rgba(34,197,94,.45)}
   .itemcard.done .ihead b{color:var(--muted);text-decoration:line-through}
   .itemcard .ihead b{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -497,8 +510,10 @@
   const LS = {
     config:'interval.config', presets:'interval.presets',
     log:'interval.log', settings:'interval.settings',
-    exercises:'interval.exercises'
+    exercises:'interval.exercises',
+    sessions:'interval.sessions', active:'interval.active'
   };
+  const uid = ()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
   const load = (k,def)=>{ try{ const v=localStorage.getItem(k); return v==null?def:JSON.parse(v);}catch(e){return def;} };
   const save = (k,v)=>{ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} };
 
@@ -829,6 +844,7 @@
     // count this HIIT run on the session card (covers both the card Start and the "Again" re-run)
     if(activeHiitItem && entry.rounds>0){
       activeHiitItem.runs++;
+      saveActive();
       if(activeSession) renderSessionItems();
     }
     showDone(entry, completed);
@@ -904,7 +920,7 @@
     if(load(LS.log,[]).length && confirm('Delete the entire workout log?')){ save(LS.log,[]); renderLog(); toast('Log cleared'); }
   });
   $('#exportBtn').addEventListener('click',()=>{
-    const data={app:'interval',version:1,exportedAt:new Date().toISOString(),presets:userPresets,log:load(LS.log,[])};
+    const data={app:'interval',version:2,exportedAt:new Date().toISOString(),presets:userPresets,log:load(LS.log,[]),sessions:getSessions(),exercises:getCatalog()};
     const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
     const url=URL.createObjectURL(blob); const a=document.createElement('a');
     a.href=url; a.download=`interval-backup-${new Date().toISOString().slice(0,10)}.json`; a.click();
@@ -928,33 +944,64 @@
           data.presets.forEach(p=>{ if(!names.has(p.name.toLowerCase())) userPresets.push(p); });
           save(LS.presets,userPresets); renderPresets();
         }
-        renderLog(); toast('Backup imported');
+        if(Array.isArray(data.sessions)){
+          const existing=getSessions(); const ids=new Set(existing.map(x=>x.id));
+          const merged=existing.concat(data.sessions.filter(x=>!ids.has(x.id))).sort((a,b)=>b.startedAt-a.startedAt);
+          saveSessions(merged);
+        }
+        if(Array.isArray(data.exercises)){
+          const cat=getCatalog(); const lower=new Set(cat.map(n=>n.toLowerCase()));
+          data.exercises.forEach(n=>{ if(typeof n==='string' && !lower.has(n.toLowerCase())) cat.push(n); });
+          save(LS.exercises,cat);
+        }
+        renderLog(); renderSessionLog(); renderDashboard(); toast('Backup imported');
       }catch(err){ toast('Not a valid Interval backup'); }
       $('#importFile').value='';
     };
     reader.readAsText(file);
   });
 
-  // ---------- Dashboard (mock) ----------
+  // ---------- Sessions store ----------
   const DAY_MS=864e5;
-  // day-offsets (0=today) that had a session, for demo purposes
-  const MOCK_SESSION_DAYS=[0,1,3,4,5,7,8,9,12,13,16,19,20,21,24,27,30,33,36,40,44,50,55,60,70,80,95,110,130,150,180,210,240,270,300,330,360];
-  let activeRange='7';
-  function computeMockStreak(){
-    const set=new Set(MOCK_SESSION_DAYS);
-    let streak=0; while(set.has(streak)) streak++;
+  const dayKey = ts => { const d=new Date(ts); d.setHours(0,0,0,0); return d.getTime(); };
+  function getSessions(){ return load(LS.sessions, []); }
+  function saveSessions(arr){ save(LS.sessions, arr); }
+  function sessionVolume(s){
+    let v=0;
+    s.items.forEach(it=>{ if(it.type==='exercise') it.sets.forEach(st=>{ if(st.done) v+=(st.kg||0)*(st.reps||0); }); });
+    return Math.round(v);
+  }
+  function sessionExCount(s){ return s.items.length; }
+  function sessionSetCount(s){
+    let n=0; s.items.forEach(it=>{ n += it.type==='exercise' ? it.sets.length : (it.runs||0); }); return n;
+  }
+  function computeSessionStreak(sessions){
+    if(!sessions.length) return 0;
+    const days=new Set(sessions.map(s=>dayKey(s.startedAt)));
+    let streak=0, cur=dayKey(Date.now());
+    if(!days.has(cur)){ cur-=DAY_MS; if(!days.has(cur)) return 0; }
+    while(days.has(cur)){ streak++; cur-=DAY_MS; }
     return streak;
   }
+
+  // ---------- Dashboard ----------
+  let activeRange='7';
   function renderDashboard(){
+    const sessions=getSessions();
     const days = activeRange==='year' ? 365 : parseInt(activeRange,10);
-    const set=new Set(MOCK_SESSION_DAYS);
+    const today=dayKey(Date.now());
+    const daySet=new Set(sessions.map(s=>dayKey(s.startedAt)));
     const pts=[]; let cum=0;
-    for(let i=days-1;i>=0;i--){ if(set.has(i)) cum++; pts.push(cum); }
+    for(let i=days-1;i>=0;i--){ if(daySet.has(today-i*DAY_MS)) cum++; pts.push(cum); }
+    const winStart=today-(days-1)*DAY_MS;
+    const inRange=sessions.filter(s=>dayKey(s.startedAt)>=winStart).length;
+    const weekStart=today-6*DAY_MS;
+    const thisWeek=sessions.filter(s=>dayKey(s.startedAt)>=weekStart).length;
     $('#dashStats').innerHTML=`
-      <div class="stat"><b>${pts[pts.length-1]||0}</b><span>sessions</span></div>
-      <div class="stat"><b>${computeMockStreak()}🔥</b><span>day streak</span></div>
-      <div class="stat"><b>${MOCK_SESSION_DAYS.filter(o=>o<7).length}</b><span>this week</span></div>
-      <div class="stat"><b>${MOCK_SESSION_DAYS.length}</b><span>all time</span></div>`;
+      <div class="stat"><b>${inRange}</b><span>in range</span></div>
+      <div class="stat"><b>${computeSessionStreak(sessions)}🔥</b><span>day streak</span></div>
+      <div class="stat"><b>${thisWeek}</b><span>this week</span></div>
+      <div class="stat"><b>${sessions.length}</b><span>all time</span></div>`;
     paintChart(pts);
     $$('#rangePicker button').forEach(b=>b.classList.toggle('active', b.dataset.r===activeRange));
   }
@@ -972,33 +1019,26 @@
     activeRange=b.dataset.r; renderDashboard();
   });
 
-  // ---------- Workout / session (mock, in-memory only) ----------
-  const EXERCISE_PRESETS=['Push-Up','Bench Press','Machine Biceps Curl','Lat Pulldown','Seated Row','Running','Tabata'];
-  const MOCK_SESSION_LOG=[
-    {id:'m1', ts:Date.now()-1*DAY_MS, name:'Back, Shoulders, Biceps', exCount:4, setCount:13, volume:1820},
-    {id:'m2', ts:Date.now()-3*DAY_MS, name:'Running', exCount:1, setCount:1, volume:0},
-    {id:'m3', ts:Date.now()-4*DAY_MS, name:'Push-Up', exCount:1, setCount:3, volume:0}
-  ];
-  let activeSession=null;
-  let activeHiitItem=null; // the HIIT block whose timer is currently running
-  function freshMockSession(){
-    return {
-      title:'Evening Session', startedAt:Date.now(),
-      items:[
-        {type:'exercise', name:'Machine Biceps Curl', sets:[
-          {kg:35,reps:10,done:true},{kg:42,reps:10,done:true},{kg:42,reps:10,done:false}
-        ]},
-        {type:'exercise', name:'Lat Pulldown', sets:[
-          {kg:57,reps:8,done:true},{kg:57,reps:8,done:false}
-        ]},
-        {type:'hiit', name:'Tabata', moves:[
-          {name:'Push-Up',kg:0,reps:15},{name:'Squat',kg:0,reps:15}
-        ], runs:2}
-      ]
-    };
+  // ---------- Workout / session (persisted) ----------
+  let activeSession=load(LS.active, null);   // resume an ongoing session across reloads
+  let activeHiitItem=null;                   // HIIT block whose timer is currently running
+  function saveActive(){ save(LS.active, activeSession); }
+  function sessionTitle(){
+    const h=new Date().getHours();
+    const part = h<5?'Night':h<12?'Morning':h<17?'Afternoon':h<21?'Evening':'Night';
+    return part+' Session';
   }
+  function newSession(){ return {id:uid(), startedAt:Date.now(), title:sessionTitle(), items:[]}; }
   function renderExercisePresets(){
-    $('#exercisePresetList').innerHTML=EXERCISE_PRESETS.map(n=>`<div class="chip"><span>${escapeHtml(n)}</span></div>`).join('');
+    const cat=getCatalog(); const el=$('#exercisePresetList');
+    if(!cat.length){ el.innerHTML='<span style="color:var(--muted);font-size:13px">No exercises saved yet — start a workout and add one.</span>'; return; }
+    el.innerHTML=cat.map(n=>`<div class="chip"><span>${escapeHtml(n)}</span></div>`).join('');
+    $$('#exercisePresetList .chip').forEach((c,i)=>c.addEventListener('click',()=>quickAdd(cat[i])));
+  }
+  function quickAdd(name){
+    if(!activeSession) activeSession=newSession();
+    activeSession.items.push({type:'exercise', name, sets:[{kg:0,reps:0,done:false}], collapsed:false, done:false});
+    saveActive(); renderWorkout();
   }
   function renderWorkout(){
     if(activeSession){
@@ -1016,8 +1056,8 @@
   // tapping a kg/reps field clears it so you can type fresh; restores the value if left blank
   function bindNumInput(input, get, set){
     input.addEventListener('focus',()=>{ input.dataset.prev=String(get()); input.value=''; });
-    input.addEventListener('input',()=>{ if(input.value!=='') set(Number(input.value)||0); });
-    input.addEventListener('blur',()=>{ if(input.value===''){ set(Number(input.dataset.prev)||0); input.value=input.dataset.prev; } });
+    input.addEventListener('input',()=>{ if(input.value!==''){ set(Number(input.value)||0); saveActive(); } });
+    input.addEventListener('blur',()=>{ if(input.value===''){ set(Number(input.dataset.prev)||0); input.value=input.dataset.prev; } saveActive(); });
   }
   function renderSessionItems(){
     const wrap=$('#sessionItems'); wrap.innerHTML='';
@@ -1030,7 +1070,8 @@
           ? '<span class="badge ok">✓ Done</span>'
           : `<span class="badge">${item.sets.length} sets</span>`;
         card.innerHTML=`
-          <div class="ihead"><div class="ttl"><span class="chev">▾</span><b>${escapeHtml(item.name)}</b></div>${badge}</div>
+          <div class="ihead"><div class="ttl"><span class="chev">▾</span><b>${escapeHtml(item.name)}</b></div>
+            <div class="right">${badge}<button class="delx" data-act="delitem" aria-label="Remove exercise">✕</button></div></div>
           <div class="cardbody"><div class="cardbody-inner">
             <div class="setlist"></div>
             <button class="addrow" data-act="addset">+ Add set</button>
@@ -1056,49 +1097,62 @@
             badgeEl.classList.toggle('ok', allDone);
             badgeEl.textContent = allDone ? '✓ Done' : `${item.sets.length} sets`;
             if(allDone){ item.collapsed=true; card.classList.add('collapsed'); } // animated auto-minimise
+            saveActive();
           });
           list.appendChild(row);
         });
         card.querySelector('[data-act=addset]').addEventListener('click',()=>{
           const last=item.sets[item.sets.length-1];
           item.sets.push({kg:last?last.kg:0, reps:last?last.reps:0, done:false});
-          item.done=false;
+          item.done=false; saveActive();
           renderSessionItems();
         });
       } else {
         card.innerHTML=`
-          <div class="ihead"><div class="ttl"><span class="chev">▾</span><b>${escapeHtml(item.name)}</b></div><span class="badge">Ran ${item.runs}×</span></div>
+          <div class="ihead"><div class="ttl"><span class="chev">▾</span><b>${escapeHtml(item.name)}</b></div>
+            <div class="right"><span class="badge">Ran ${item.runs}×</span><button class="delx" data-act="delitem" aria-label="Remove block">✕</button></div></div>
           <div class="cardbody"><div class="cardbody-inner">
             <div class="setlist"></div>
             <button class="addrow" data-act="addmove">+ Add exercise</button>
             <button class="hiitstart" data-act="start">▶ Start</button>
           </div></div>`;
         const list=card.querySelector('.setlist');
-        item.moves.forEach(m=>{
+        item.moves.forEach((m,mi)=>{
           const row=document.createElement('div'); row.className='setrow';
           row.innerHTML=`
             <div class="si">${escapeHtml(m.name)}</div>
             <input type="number" inputmode="decimal" value="${m.kg}" placeholder="kg">
             <input type="number" inputmode="numeric" value="${m.reps}" placeholder="reps">
-            <div></div>`;
+            <button class="delx" data-act="delmove" aria-label="Remove">✕</button>`;
           const [kgI,repsI]=row.querySelectorAll('input');
           bindNumInput(kgI, ()=>m.kg, v=>m.kg=v);
           bindNumInput(repsI, ()=>m.reps, v=>m.reps=v);
+          row.querySelector('[data-act=delmove]').addEventListener('click',()=>{
+            item.moves.splice(mi,1); saveActive(); renderSessionItems();
+          });
           list.appendChild(row);
         });
         card.querySelector('[data-act=addmove]').addEventListener('click',()=>{
           openPicker({mode:'move', item});
         });
         card.querySelector('[data-act=start]').addEventListener('click',()=>{
+          if(!item.moves.length){ toast('Add an exercise to the block first'); return; }
           activeHiitItem=item;            // counted on finish, so the "Again" re-run path counts too
           startWorkout(item.name);
         });
       }
+      // remove the whole item (exercise or HIIT block)
+      card.querySelector('[data-act=delitem]').addEventListener('click',(e)=>{
+        e.stopPropagation();
+        const idx=activeSession.items.indexOf(item);
+        if(idx>-1){ activeSession.items.splice(idx,1); saveActive(); renderSessionItems(); }
+      });
       // tap the header (title) to minimise/expand — toggle the class only so it animates
       card.querySelector('.ihead').addEventListener('click',(e)=>{
-        if(e.target.closest('.check')) return;
+        if(e.target.closest('.check')||e.target.closest('.delx')) return;
         item.collapsed=!item.collapsed;
         card.classList.toggle('collapsed', item.collapsed);
+        saveActive();
       });
       wrap.appendChild(card);
     });
@@ -1108,17 +1162,24 @@
   // The catalog is a persistent list of exercise names. Adding a new one here
   // creates a real data entry (so its history can be looked up elsewhere later).
   const DEFAULT_EXERCISES=['Kettlebell Spin','Kettlebell Superman','Push-Up','Box'];
-  function getCatalog(){ const c=load(LS.exercises,null); return Array.isArray(c)&&c.length?c:DEFAULT_EXERCISES.slice(); }
+  function getCatalog(){ const c=load(LS.exercises,null); return Array.isArray(c)?c:DEFAULT_EXERCISES.slice(); }
   function addToCatalog(name){
     const cat=getCatalog();
     if(cat.some(n=>n.toLowerCase()===name.toLowerCase())) return cat; // dedupe (case-insensitive)
     cat.push(name); save(LS.exercises,cat); return cat;
   }
+  function removeFromCatalog(name){
+    save(LS.exercises, getCatalog().filter(n=>n.toLowerCase()!==name.toLowerCase()));
+  }
   let pickerCtx=null; // {mode:'exercise'} | {mode:'move', item}
   function renderPickerList(){
-    const cat=getCatalog();
-    $('#exPickerList').innerHTML=cat.map(n=>`<button class="pickrow">${escapeHtml(n)}</button>`).join('');
-    $$('#exPickerList .pickrow').forEach((b,i)=>b.addEventListener('click',()=>pickExercise(cat[i])));
+    const cat=getCatalog(); const el=$('#exPickerList');
+    if(!cat.length){ el.innerHTML='<div class="empty" style="padding:10px 0">No saved exercises. Type one below.</div>'; return; }
+    el.innerHTML=cat.map(n=>`<div class="pickitem"><button class="pickrow">${escapeHtml(n)}</button><button class="pickdel" aria-label="Delete">🗑</button></div>`).join('');
+    $$('#exPickerList .pickitem').forEach((row,i)=>{
+      row.querySelector('.pickrow').addEventListener('click',()=>pickExercise(cat[i]));
+      row.querySelector('.pickdel').addEventListener('click',()=>{ removeFromCatalog(cat[i]); renderPickerList(); toast('Removed from list'); });
+    });
   }
   function openPicker(ctx){
     pickerCtx=ctx;
@@ -1133,10 +1194,12 @@
     if(pickerCtx.mode==='move'){
       pickerCtx.item.moves.push({name, kg:0, reps:10});
     } else {
+      if(!activeSession) activeSession=newSession();
       activeSession.items.push({type:'exercise', name, sets:[{kg:0,reps:0,done:false}], collapsed:false, done:false});
     }
+    saveActive();
     closePicker();
-    renderSessionItems();
+    renderWorkout();
   }
   function addNewExercise(){
     const name=$('#newExName').value.trim();
@@ -1149,32 +1212,66 @@
   $('#newExName').addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ e.preventDefault(); addNewExercise(); } });
   $('#exPickerScrim').addEventListener('click',closePicker);
 
-  $('#startSessionBtn').addEventListener('click',()=>{ activeSession=freshMockSession(); renderWorkout(); });
+  $('#startSessionBtn').addEventListener('click',()=>{ activeSession=newSession(); saveActive(); renderWorkout(); });
   $('#addExerciseBtn').addEventListener('click',()=>{ openPicker({mode:'exercise'}); });
   $('#addHiitBtn').addEventListener('click',()=>{
-    activeSession.items.push({type:'hiit', name:'HIIT', moves:[], runs:0});
-    renderSessionItems();
+    activeSession.items.push({type:'hiit', name:'HIIT', moves:[], runs:0, collapsed:false});
+    saveActive(); renderSessionItems();
   });
-  $('#finishSessionBtn').addEventListener('click',()=>{
-    if(confirm('Finish this workout?')){ activeSession=null; activeHiitItem=null; toast('Workout finished (demo)'); renderWorkout(); }
-  });
+  $('#finishSessionBtn').addEventListener('click',finishSession);
+  function finishSession(){
+    if(!activeSession) return;
+    if(!activeSession.items.length){
+      if(confirm('This workout is empty. Discard it?')){ activeSession=null; activeHiitItem=null; saveActive(); toast('Discarded'); renderWorkout(); }
+      return;
+    }
+    if(!confirm('Finish this workout?')) return;
+    activeSession.endedAt=Date.now();
+    const arr=getSessions(); arr.unshift(activeSession); saveSessions(arr);
+    activeSession=null; activeHiitItem=null; saveActive();
+    toast('Workout saved');
+    renderWorkout(); renderDashboard(); renderSessionLog();
+  }
 
-  // ---------- Session log (mock) ----------
+  // ---------- Session log ----------
+  function sessionDetailHtml(s){
+    return s.items.map(it=>{
+      if(it.type==='exercise'){
+        const rows=it.sets.map((st,i)=>`<div class="dsub">Set ${i+1}: ${st.kg||0}kg × ${st.reps||0}${st.done?' ✓':''}</div>`).join('');
+        return `<div class="ditem"><b>${escapeHtml(it.name)}</b>${rows}</div>`;
+      }
+      const mv=it.moves.map(m=>escapeHtml(m.name)).join(', ');
+      return `<div class="ditem"><b>${escapeHtml(it.name)}</b><div class="dsub">HIIT · ran ${it.runs||0}×${mv?' · '+mv:''}</div></div>`;
+    }).join('') || '<div class="dsub">No exercises logged.</div>';
+  }
   function renderSessionLog(){
+    const sessions=getSessions();
     const list=$('#sessionLogList');
-    if(!MOCK_SESSION_LOG.length){
-      list.innerHTML=`<div class="empty"><span class="em">📒</span>No sessions yet.</div>`;
+    if(!sessions.length){
+      list.innerHTML=`<div class="empty"><span class="em">📒</span>No sessions yet.<br>Start a workout and finish it to see it here.</div>`;
       return;
     }
     list.innerHTML='';
-    MOCK_SESSION_LOG.forEach(e=>{
-      const item=document.createElement('div'); item.className='logitem';
+    sessions.forEach(s=>{
+      const item=document.createElement('div'); item.className='logitem session-row';
+      const vol=sessionVolume(s);
       item.innerHTML=`
         <div class="meta">
-          <b>${escapeHtml(e.name)}</b>
-          <div class="sub">${relDate(e.ts)} · ${e.exCount} exercises · ${e.setCount} sets</div>
+          <b>${escapeHtml(s.title||'Workout')}</b>
+          <div class="sub">${relDate(s.startedAt)} · ${sessionExCount(s)} exercises · ${sessionSetCount(s)} sets</div>
+          <div class="sessdetail" style="display:none"></div>
         </div>
-        <div class="dur"><b>${e.volume?e.volume+' kg':'—'}</b><br><span style="color:var(--muted);font-size:12px">volume</span></div>`;
+        <div class="dur"><b>${vol?vol+' kg':'—'}</b><br><span style="color:var(--muted);font-size:12px">volume</span></div>
+        <div class="del" data-id="${s.id}">🗑</div>`;
+      const detail=item.querySelector('.sessdetail');
+      item.querySelector('.meta').addEventListener('click',()=>{
+        if(detail.style.display==='none'){ detail.innerHTML=sessionDetailHtml(s); detail.style.display='block'; }
+        else detail.style.display='none';
+      });
+      item.querySelector('.del').addEventListener('click',(e)=>{
+        e.stopPropagation();
+        if(confirm('Delete this session?')){ saveSessions(getSessions().filter(x=>x.id!==s.id)); renderSessionLog(); renderDashboard(); toast('Deleted'); }
+      });
       list.appendChild(item);
     });
   }
