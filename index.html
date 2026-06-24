@@ -247,10 +247,15 @@
   .itemcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
   .itemcard .ihead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;cursor:pointer;-webkit-user-select:none;user-select:none}
   .itemcard .ihead .ttl{display:flex;align-items:center;gap:8px;min-width:0}
-  .itemcard .ihead .chev{color:var(--muted);font-size:12px;transition:transform .2s;flex:none}
+  .itemcard .ihead .chev{color:var(--muted);font-size:12px;transition:transform .18s ease;flex:none}
+  .itemcard .ihead{transition:margin-bottom .18s ease}
   .itemcard.collapsed .ihead{margin-bottom:0}
   .itemcard.collapsed .ihead .chev{transform:rotate(-90deg)}
-  .itemcard.collapsed .setlist,.itemcard.collapsed .addrow,.itemcard.collapsed .hiitstart{display:none}
+  /* animated minimize: collapse the body via grid-rows + fade */
+  .cardbody{display:grid;grid-template-rows:1fr;transition:grid-template-rows .18s ease}
+  .cardbody-inner{overflow:hidden;min-height:0;transition:opacity .18s ease}
+  .itemcard.collapsed .cardbody{grid-template-rows:0fr}
+  .itemcard.collapsed .cardbody-inner{opacity:0}
   .itemcard.done{border-color:rgba(34,197,94,.45)}
   .itemcard.done .ihead b{color:var(--muted);text-decoration:line-through}
   .itemcard .ihead b{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -435,15 +440,11 @@
         <div class="ctrls"><button data-d="-1">−</button><div class="val"></div><button data-d="1">+</button></div>
       </div>
       <div class="stepper" data-key="rounds">
-        <div class="lbl">Rounds <small>per set</small></div>
-        <div class="ctrls"><button data-d="-1">−</button><div class="val"></div><button data-d="1">+</button></div>
-      </div>
-      <div class="stepper" data-key="sets">
-        <div class="lbl">Sets</div>
+        <div class="lbl">Rounds <small>per exercise</small></div>
         <div class="ctrls"><button data-d="-1">−</button><div class="val"></div><button data-d="1">+</button></div>
       </div>
       <div class="stepper" data-key="setRest">
-        <div class="lbl">Rest between sets</div>
+        <div class="lbl">Rest between exercises</div>
         <div class="ctrls"><button data-d="-1">−</button><div class="val"></div><button data-d="1">+</button></div>
       </div>
       <div class="stepper" data-key="cooldown">
@@ -504,11 +505,11 @@
   // ---------- Config ----------
   const FIELDS = {
     prepare:{def:10, min:0, step:5, unit:'s'},
-    work:   {def:20, min:1, step:5, unit:'s'},
-    rest:   {def:20, min:0, step:5, unit:'s'},
-    rounds: {def:8,  min:1, step:1, unit:''},
-    sets:   {def:1,  min:1, step:1, unit:''},
-    setRest:{def:60, min:0, step:15,unit:'s'},
+    work:   {def:60, min:1, step:5, unit:'s'},
+    rest:   {def:30, min:0, step:5, unit:'s'},
+    rounds: {def:1,  min:1, step:1, unit:''},
+    sets:   {def:1,  min:1, step:1, unit:''}, // derived at run time from the HIIT block's exercise count
+    setRest:{def:20, min:0, step:15,unit:'s'},
     cooldown:{def:0, min:0, step:15,unit:'s'}
   };
   let config = Object.assign(
@@ -537,8 +538,6 @@
       const k=row.dataset.key;
       row.querySelector('.val').innerHTML=fmtVal(k);
     });
-    // dim set-rest when only one set
-    $('.stepper[data-key=setRest]').classList.toggle('dim', config.sets<=1);
     updateEstimate();
     save(LS.config, config);
     markActivePreset();
@@ -683,7 +682,10 @@
   };
 
   function startWorkout(presetName){
-    const seq=buildSequence(config);
+    // a HIIT block runs one "set" per exercise in the block (Again re-runs keep this too)
+    const c=Object.assign({}, config);
+    if(activeHiitItem) c.sets=Math.max(1, activeHiitItem.moves.length);
+    const seq=buildSequence(c);
     if(seq.filter(p=>p.type==='work').length===0){ toast('Add at least one work interval'); return; }
     audio(); // unlock on user gesture
     engine.seq=seq; engine.idx=0; engine.running=true; engine.paused=false;
@@ -1011,6 +1013,12 @@
       renderExercisePresets();
     }
   }
+  // tapping a kg/reps field clears it so you can type fresh; restores the value if left blank
+  function bindNumInput(input, get, set){
+    input.addEventListener('focus',()=>{ input.dataset.prev=String(get()); input.value=''; });
+    input.addEventListener('input',()=>{ if(input.value!=='') set(Number(input.value)||0); });
+    input.addEventListener('blur',()=>{ if(input.value===''){ set(Number(input.dataset.prev)||0); input.value=input.dataset.prev; } });
+  }
   function renderSessionItems(){
     const wrap=$('#sessionItems'); wrap.innerHTML='';
     activeSession.items.forEach(item=>{
@@ -1023,8 +1031,11 @@
           : `<span class="badge">${item.sets.length} sets</span>`;
         card.innerHTML=`
           <div class="ihead"><div class="ttl"><span class="chev">▾</span><b>${escapeHtml(item.name)}</b></div>${badge}</div>
-          <div class="setlist"></div>
-          <button class="addrow" data-act="addset">+ Add set</button>`;
+          <div class="cardbody"><div class="cardbody-inner">
+            <div class="setlist"></div>
+            <button class="addrow" data-act="addset">+ Add set</button>
+          </div></div>`;
+        const badgeEl=card.querySelector('.badge');
         const list=card.querySelector('.setlist');
         item.sets.forEach((s,si)=>{
           const row=document.createElement('div'); row.className='setrow';
@@ -1034,14 +1045,17 @@
             <input type="number" inputmode="numeric" value="${s.reps}" placeholder="reps">
             <div class="check ${s.done?'on':''}">✓</div>`;
           const [kgI,repsI]=row.querySelectorAll('input');
-          kgI.addEventListener('input',()=>{ s.kg=Number(kgI.value)||0; });
-          repsI.addEventListener('input',()=>{ s.reps=Number(repsI.value)||0; });
-          row.querySelector('.check').addEventListener('click',()=>{
-            s.done=!s.done;
+          bindNumInput(kgI, ()=>s.kg, v=>s.kg=v);
+          bindNumInput(repsI, ()=>s.reps, v=>s.reps=v);
+          const chk=row.querySelector('.check');
+          chk.addEventListener('click',()=>{
+            s.done=!s.done; chk.classList.toggle('on', s.done);
             const allDone = item.sets.length>0 && item.sets.every(x=>x.done);
-            item.done = allDone;
-            if(allDone) item.collapsed = true;       // auto-minimise when finished
-            renderSessionItems();
+            item.done=allDone;
+            card.classList.toggle('done', allDone);
+            badgeEl.classList.toggle('ok', allDone);
+            badgeEl.textContent = allDone ? '✓ Done' : `${item.sets.length} sets`;
+            if(allDone){ item.collapsed=true; card.classList.add('collapsed'); } // animated auto-minimise
           });
           list.appendChild(row);
         });
@@ -1054,9 +1068,11 @@
       } else {
         card.innerHTML=`
           <div class="ihead"><div class="ttl"><span class="chev">▾</span><b>${escapeHtml(item.name)}</b></div><span class="badge">Ran ${item.runs}×</span></div>
-          <div class="setlist"></div>
-          <button class="addrow" data-act="addmove">+ Add exercise</button>
-          <button class="hiitstart" data-act="start">▶ Start</button>`;
+          <div class="cardbody"><div class="cardbody-inner">
+            <div class="setlist"></div>
+            <button class="addrow" data-act="addmove">+ Add exercise</button>
+            <button class="hiitstart" data-act="start">▶ Start</button>
+          </div></div>`;
         const list=card.querySelector('.setlist');
         item.moves.forEach(m=>{
           const row=document.createElement('div'); row.className='setrow';
@@ -1066,8 +1082,8 @@
             <input type="number" inputmode="numeric" value="${m.reps}" placeholder="reps">
             <div></div>`;
           const [kgI,repsI]=row.querySelectorAll('input');
-          kgI.addEventListener('input',()=>{ m.kg=Number(kgI.value)||0; });
-          repsI.addEventListener('input',()=>{ m.reps=Number(repsI.value)||0; });
+          bindNumInput(kgI, ()=>m.kg, v=>m.kg=v);
+          bindNumInput(repsI, ()=>m.reps, v=>m.reps=v);
           list.appendChild(row);
         });
         card.querySelector('[data-act=addmove]').addEventListener('click',()=>{
@@ -1078,10 +1094,11 @@
           startWorkout(item.name);
         });
       }
-      // tap the header (title) to minimise/expand
+      // tap the header (title) to minimise/expand — toggle the class only so it animates
       card.querySelector('.ihead').addEventListener('click',(e)=>{
         if(e.target.closest('.check')) return;
-        item.collapsed=!item.collapsed; renderSessionItems();
+        item.collapsed=!item.collapsed;
+        card.classList.toggle('collapsed', item.collapsed);
       });
       wrap.appendChild(card);
     });
