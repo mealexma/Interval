@@ -351,10 +351,7 @@
     <section id="workout" class="view">
       <div id="workoutIdle">
         <button class="bigbtn" id="startSessionBtn">Start workout</button>
-        <div class="card" style="margin-top:14px">
-          <h2>Quick add</h2>
-          <div class="presets" id="exercisePresetList"></div>
-        </div>
+        <!-- future: pre-made workout templates go here -->
       </div>
       <div id="workoutActive" style="display:none">
         <div class="session-head">
@@ -1049,17 +1046,6 @@
     return part+' Session';
   }
   function newSession(){ return {id:uid(), startedAt:Date.now(), title:sessionTitle(), items:[]}; }
-  function renderExercisePresets(){
-    const cat=getCatalog(); const el=$('#exercisePresetList');
-    if(!cat.length){ el.innerHTML='<span style="color:var(--muted);font-size:13px">No exercises saved yet — start a workout and add one.</span>'; return; }
-    el.innerHTML=cat.map(n=>`<div class="chip"><span>${escapeHtml(n)}</span></div>`).join('');
-    $$('#exercisePresetList .chip').forEach((c,i)=>c.addEventListener('click',()=>quickAdd(cat[i])));
-  }
-  function quickAdd(name){
-    if(!activeSession) activeSession=newSession();
-    activeSession.items.push({type:'exercise', name, sets:[{kg:0,reps:0,done:false}], collapsed:false, done:false});
-    saveActive(); renderWorkout();
-  }
   function renderWorkout(){
     if(activeSession){
       $('#workoutIdle').style.display='none';
@@ -1070,7 +1056,6 @@
     } else {
       $('#workoutIdle').style.display='block';
       $('#workoutActive').style.display='none';
-      renderExercisePresets();
     }
   }
   // tapping a kg/reps field clears it so you can type fresh; restores the value if left blank
@@ -1214,6 +1199,7 @@
       // remove the whole item (exercise or HIIT block)
       card.querySelector('[data-act=delitem]').addEventListener('click',(e)=>{
         e.stopPropagation();
+        if(!confirm(`Remove ${item.type==='hiit'?'this HIIT block':'this exercise'}?`)) return;
         const idx=activeSession.items.indexOf(item);
         if(idx>-1){ activeSession.items.splice(idx,1); saveActive(); renderSessionItems(); }
       });
@@ -1367,8 +1353,7 @@
   $('#finishSessionBtn').addEventListener('click',finishSession);
   $('#cancelSessionBtn').addEventListener('click',()=>{
     if(!activeSession) return;
-    // discard the in-progress workout without saving it to the log
-    if(activeSession.items.length && !confirm('Cancel this workout? Nothing will be saved.')) return;
+    if(!confirm('Cancel this workout? Nothing will be saved.')) return;
     activeSession=null; activeHiitItem=null; saveActive();
     toast('Workout cancelled'); renderWorkout();
   });
