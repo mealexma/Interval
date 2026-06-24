@@ -1,7 +1,7 @@
 /* Interval — HIIT Timer. Service worker: cache-first app shell, fully offline after first load. */
 'use strict';
 
-const CACHE_NAME = 'interval-hiit-v4';
+const CACHE_NAME = 'interval-hiit-v5';
 const SHELL = [
   './',
   './index.html',
@@ -33,20 +33,28 @@ self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
 
+  // Network-first for the app shell (navigations / the HTML document) so a fresh
+  // index.html always wins when online; fall back to the cached shell offline.
+  if (req.mode === 'navigate' || req.destination === 'document') {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res && res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put('./index.html', copy));
+          }
+          return res;
+        })
+        .catch(() => caches.match('./index.html', { ignoreSearch: true })
+          .then((cached) => cached || caches.match('./')))
+    );
+    return;
+  }
+
+  // Cache-first for other static assets (icons, manifest, etc).
   event.respondWith(
     caches.match(req, { ignoreSearch: true }).then((cached) => {
-      if (cached) {
-        // Stale-while-revalidate for navigations: serve cached shell instantly,
-        // refresh it in the background so updates land on the next visit.
-        if (req.mode === 'navigate') {
-          fetch(req).then((res) => {
-            if (res && res.ok) {
-              caches.open(CACHE_NAME).then((cache) => cache.put(req, res));
-            }
-          }).catch(() => {});
-        }
-        return cached;
-      }
+      if (cached) return cached;
       return fetch(req)
         .then((res) => {
           if (res && res.ok && new URL(req.url).origin === self.location.origin) {
@@ -55,12 +63,7 @@ self.addEventListener('fetch', (event) => {
           }
           return res;
         })
-        .catch(() => {
-          if (req.mode === 'navigate') {
-            return caches.match('./index.html');
-          }
-          return Response.error();
-        });
+        .catch(() => Response.error());
     })
   );
 });
