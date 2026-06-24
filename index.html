@@ -164,6 +164,7 @@
   .logitem .dur b{font-size:17px}
   .logitem .del{color:var(--muted);font-size:18px;padding:4px 6px;cursor:pointer}
   .logitem .del:active{color:var(--danger)}
+  .sectiontitle{margin:0 0 10px;font-size:13px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted)}
   .empty{text-align:center;color:var(--muted);padding:48px 16px}
   .empty .em{font-size:46px;display:block;margin-bottom:10px}
   .linkrow{display:flex;gap:8px;margin-top:6px}
@@ -180,10 +181,10 @@
   }
   nav.tabs button{
     flex:1;max-width:240px;background:var(--panel);border:1px solid var(--line);color:var(--muted);
-    border-radius:13px;padding:11px;font-size:13px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;
+    border-radius:13px;padding:13px;font-size:13px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;
   }
   nav.tabs button.active{color:var(--text);border-color:var(--accent);background:var(--panel2)}
-  nav.tabs button .ic{font-size:19px}
+  nav.tabs button .ic{font-size:23px}
 
   /* ---- settings sheet ---- */
   #settings{position:fixed;inset:0;z-index:70;display:none;align-items:flex-end}
@@ -193,6 +194,7 @@
     position:relative;width:100%;max-width:520px;margin:0 auto;
     background:var(--panel);border-radius:20px 20px 0 0;border:1px solid var(--line);
     padding:18px 18px calc(var(--safe-b) + 18px);animation:slideup .25s ease;
+    max-height:85vh;overflow-y:auto;
   }
   @keyframes slideup{from{transform:translateY(100%)}to{transform:none}}
   #settings h2{margin:2px 0 14px;font-size:18px}
@@ -211,6 +213,56 @@
     font-size:14px;opacity:0;pointer-events:none;transition:.25s;z-index:80;max-width:90vw;
   }
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  /* ---- dashboard ---- */
+  .rangepicker{display:flex;gap:6px;margin-bottom:14px}
+  .rangepicker button{
+    flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--muted);
+    border-radius:10px;padding:9px 0;font-size:13px;font-weight:600;cursor:pointer;
+  }
+  .rangepicker button.active{color:#bbf7d0;border-color:var(--accent);background:rgba(34,197,94,.12)}
+  .chart-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px 10px 10px;margin-bottom:14px}
+  .chart-card h2{margin:0 0 10px 4px;font-size:13px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted)}
+  .chart-card svg{width:100%;height:140px;display:block}
+  .chart-card .axis{display:flex;justify-content:space-between;padding:6px 4px 0;font-size:11px;color:var(--muted)}
+
+  /* ---- workout / session cards ---- */
+  .session-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px}
+  .session-head h2{margin:0;font-size:19px}
+  .session-head .sub{color:var(--muted);font-size:13px;margin-top:2px}
+  .itemcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
+  .itemcard .ihead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px}
+  .itemcard .ihead b{font-size:15px}
+  .itemcard .ihead .badge{font-size:11px;color:var(--muted);background:var(--panel2);padding:3px 9px;border-radius:7px;white-space:nowrap}
+  .setrow{display:grid;grid-template-columns:1fr 64px 64px 34px;gap:7px;align-items:center;padding:5px 0}
+  .setrow .si{color:var(--muted);font-size:13px}
+  .setrow input[type=number]{
+    width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);
+    border-radius:9px;padding:8px 4px;font-size:14px;text-align:center;-webkit-user-select:text;user-select:text;
+  }
+  .setrow input[type=number]:focus{outline:none;border-color:var(--accent)}
+  .check{
+    width:30px;height:30px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);
+    display:grid;place-items:center;cursor:pointer;color:transparent;font-size:15px;
+  }
+  .check.on{background:var(--accent);border-color:var(--accent);color:#04210f}
+  .check:active{transform:scale(.92)}
+  .addrow{
+    width:100%;background:var(--panel2);border:1px dashed var(--line);color:var(--muted);
+    border-radius:11px;padding:9px;font-size:13px;cursor:pointer;margin-top:2px;
+  }
+  .addrow:active{transform:scale(.98)}
+  .hiitstart{
+    width:100%;border:0;border-radius:11px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;
+    color:#04210f;background:linear-gradient(160deg,#34d399,#22c55e);margin-top:8px;
+  }
+  .addtype{display:flex;gap:8px;margin:4px 0 14px}
+  .addtype button{
+    flex:1;background:var(--panel);border:1px dashed var(--line);color:var(--muted);
+    border-radius:13px;padding:12px;font-size:14px;cursor:pointer;
+  }
+  .addtype button:active{transform:scale(.97)}
+  .finishbtn{background:linear-gradient(160deg,#f87171,#ef4444)!important;color:#2a0a0a!important}
 </style>
 </head>
 <body>
@@ -221,56 +273,55 @@
   </header>
 
   <main>
-    <!-- ===== SETUP ===== -->
-    <section id="setup" class="view active">
-      <div class="card">
-        <h2>Presets</h2>
-        <div class="presets" id="presetList"></div>
-        <div class="saverow">
-          <input type="text" id="presetName" placeholder="Name this workout…" maxlength="24" autocomplete="off">
-          <button class="iconbtn" id="savePresetBtn" aria-label="Save preset" style="width:44px">💾</button>
+    <!-- ===== DASHBOARD ===== -->
+    <section id="dashboard" class="view active">
+      <div class="stats-grid" id="dashStats"></div>
+      <div class="chart-card">
+        <h2>Activity</h2>
+        <svg id="chartSvg" viewBox="0 0 300 120" preserveAspectRatio="none"></svg>
+        <div class="axis" id="chartAxis"></div>
+      </div>
+      <div class="rangepicker" id="rangePicker">
+        <button data-r="7" class="active">7d</button>
+        <button data-r="14">14d</button>
+        <button data-r="28">28d</button>
+        <button data-r="90">90d</button>
+        <button data-r="year">Year</button>
+      </div>
+    </section>
+
+    <!-- ===== WORKOUT ===== -->
+    <section id="workout" class="view">
+      <div id="workoutIdle">
+        <button class="bigbtn" id="startSessionBtn">Start workout</button>
+        <div class="card" style="margin-top:14px">
+          <h2>Quick add</h2>
+          <div class="presets" id="exercisePresetList"></div>
         </div>
       </div>
-
-      <div class="card" id="configCard">
-        <h2>Intervals</h2>
-        <div class="stepper" data-key="prepare">
-          <div class="lbl">Prepare <small>get-ready countdown</small></div>
-          <div class="ctrls"><button data-d="-1">−</button><div class="val"></div><button data-d="1">+</button></div>
+      <div id="workoutActive" style="display:none">
+        <div class="session-head">
+          <div>
+            <h2 id="sessionTitle">Workout</h2>
+            <div class="sub" id="sessionSub">Started just now</div>
+          </div>
         </div>
-        <div class="stepper" data-key="work">
-          <div class="lbl">Work</div>
-          <div class="ctrls"><button data-d="-1">−</button><div class="val"></div><button data-d="1">+</button></div>
+        <div id="sessionItems"></div>
+        <div class="addtype">
+          <button id="addExerciseBtn">+ Exercise</button>
+          <button id="addHiitBtn">+ HIIT</button>
         </div>
-        <div class="stepper" data-key="rest">
-          <div class="lbl">Rest</div>
-          <div class="ctrls"><button data-d="-1">−</button><div class="val"></div><button data-d="1">+</button></div>
-        </div>
-        <div class="stepper" data-key="rounds">
-          <div class="lbl">Rounds <small>per set</small></div>
-          <div class="ctrls"><button data-d="-1">−</button><div class="val"></div><button data-d="1">+</button></div>
-        </div>
-        <div class="stepper" data-key="sets">
-          <div class="lbl">Sets</div>
-          <div class="ctrls"><button data-d="-1">−</button><div class="val"></div><button data-d="1">+</button></div>
-        </div>
-        <div class="stepper" data-key="setRest">
-          <div class="lbl">Rest between sets</div>
-          <div class="ctrls"><button data-d="-1">−</button><div class="val"></div><button data-d="1">+</button></div>
-        </div>
-        <div class="stepper" data-key="cooldown">
-          <div class="lbl">Cooldown</div>
-          <div class="ctrls"><button data-d="-1">−</button><div class="val"></div><button data-d="1">+</button></div>
-        </div>
+        <button class="bigbtn finishbtn" id="finishSessionBtn">Finish workout</button>
+        <div style="height:8px"></div>
       </div>
-
-      <p class="estimate">Total: <b id="estTime">—</b> · <b id="estWork">—</b> working</p>
-      <button class="bigbtn" id="startBtn">Start workout</button>
-      <div style="height:8px"></div>
     </section>
 
     <!-- ===== LOG ===== -->
     <section id="log" class="view">
+      <h2 class="sectiontitle">Sessions</h2>
+      <div id="sessionLogList"></div>
+
+      <h2 class="sectiontitle" style="margin-top:22px">Quick timer runs</h2>
       <div class="stats-grid" id="statsGrid"></div>
       <div id="logList"></div>
       <div class="linkrow">
@@ -284,8 +335,9 @@
   </main>
 
   <nav class="tabs">
-    <button id="tabTimer" class="active"><span class="ic">⏱️</span>Timer</button>
-    <button id="tabLog"><span class="ic">📋</span>Log</button>
+    <button id="tabDash" class="active" aria-label="Dashboard"><span class="ic">📊</span></button>
+    <button id="tabWorkout" aria-label="Workout"><span class="ic">💪</span></button>
+    <button id="tabLog" aria-label="Log"><span class="ic">📋</span></button>
   </nav>
 </div>
 
@@ -336,6 +388,49 @@
   <div class="scrim" id="settingsScrim"></div>
   <div class="sheet">
     <h2>Settings</h2>
+
+    <div class="card" style="margin-bottom:14px">
+      <h2>HIIT presets</h2>
+      <div class="presets" id="presetList"></div>
+      <div class="saverow">
+        <input type="text" id="presetName" placeholder="Name this workout…" maxlength="24" autocomplete="off">
+        <button class="iconbtn" id="savePresetBtn" aria-label="Save preset" style="width:44px">💾</button>
+      </div>
+    </div>
+
+    <div class="card" id="configCard" style="margin-bottom:6px">
+      <h2>HIIT defaults</h2>
+      <div class="stepper" data-key="prepare">
+        <div class="lbl">Prepare <small>get-ready countdown</small></div>
+        <div class="ctrls"><button data-d="-1">−</button><div class="val"></div><button data-d="1">+</button></div>
+      </div>
+      <div class="stepper" data-key="work">
+        <div class="lbl">Work</div>
+        <div class="ctrls"><button data-d="-1">−</button><div class="val"></div><button data-d="1">+</button></div>
+      </div>
+      <div class="stepper" data-key="rest">
+        <div class="lbl">Rest</div>
+        <div class="ctrls"><button data-d="-1">−</button><div class="val"></div><button data-d="1">+</button></div>
+      </div>
+      <div class="stepper" data-key="rounds">
+        <div class="lbl">Rounds <small>per set</small></div>
+        <div class="ctrls"><button data-d="-1">−</button><div class="val"></div><button data-d="1">+</button></div>
+      </div>
+      <div class="stepper" data-key="sets">
+        <div class="lbl">Sets</div>
+        <div class="ctrls"><button data-d="-1">−</button><div class="val"></div><button data-d="1">+</button></div>
+      </div>
+      <div class="stepper" data-key="setRest">
+        <div class="lbl">Rest between sets</div>
+        <div class="ctrls"><button data-d="-1">−</button><div class="val"></div><button data-d="1">+</button></div>
+      </div>
+      <div class="stepper" data-key="cooldown">
+        <div class="lbl">Cooldown</div>
+        <div class="ctrls"><button data-d="-1">−</button><div class="val"></div><button data-d="1">+</button></div>
+      </div>
+    </div>
+    <p class="estimate">Total: <b id="estTime">—</b> · <b id="estWork">—</b> working</p>
+
     <div class="toggle">
       <div class="lbl">Sound <small>beeps on transitions & countdown</small></div>
       <div class="sw" data-set="sound"></div>
@@ -375,7 +470,7 @@
   const FIELDS = {
     prepare:{def:10, min:0, step:5, unit:'s'},
     work:   {def:20, min:1, step:5, unit:'s'},
-    rest:   {def:10, min:0, step:5, unit:'s'},
+    rest:   {def:20, min:0, step:5, unit:'s'},
     rounds: {def:8,  min:1, step:1, unit:''},
     sets:   {def:1,  min:1, step:1, unit:''},
     setRest:{def:60, min:0, step:15,unit:'s'},
@@ -798,16 +893,188 @@
     reader.readAsText(file);
   });
 
+  // ---------- Dashboard (mock) ----------
+  const DAY_MS=864e5;
+  // day-offsets (0=today) that had a session, for demo purposes
+  const MOCK_SESSION_DAYS=[0,1,3,4,5,7,8,9,12,13,16,19,20,21,24,27,30,33,36,40,44,50,55,60,70,80,95,110,130,150,180,210,240,270,300,330,360];
+  let activeRange='7';
+  function computeMockStreak(){
+    const set=new Set(MOCK_SESSION_DAYS);
+    let streak=0; while(set.has(streak)) streak++;
+    return streak;
+  }
+  function renderDashboard(){
+    const days = activeRange==='year' ? 365 : parseInt(activeRange,10);
+    const set=new Set(MOCK_SESSION_DAYS);
+    const pts=[]; let cum=0;
+    for(let i=days-1;i>=0;i--){ if(set.has(i)) cum++; pts.push(cum); }
+    $('#dashStats').innerHTML=`
+      <div class="stat"><b>${pts[pts.length-1]||0}</b><span>sessions</span></div>
+      <div class="stat"><b>${computeMockStreak()}🔥</b><span>day streak</span></div>
+      <div class="stat"><b>${MOCK_SESSION_DAYS.filter(o=>o<7).length}</b><span>this week</span></div>
+      <div class="stat"><b>${MOCK_SESSION_DAYS.length}</b><span>all time</span></div>`;
+    paintChart(pts);
+    $$('#rangePicker button').forEach(b=>b.classList.toggle('active', b.dataset.r===activeRange));
+  }
+  function paintChart(pts){
+    const W=300,H=120,pad=8, n=pts.length;
+    const max=Math.max(1,pts[n-1]||1);
+    const x=i=> n<=1 ? pad : pad+(W-2*pad)*i/(n-1);
+    const y=v=> H-pad-(H-2*pad)*(v/max);
+    const ptsStr=pts.map((v,i)=>x(i).toFixed(1)+','+y(v).toFixed(1)).join(' ');
+    $('#chartSvg').innerHTML=`<polyline points="${ptsStr}" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+    $('#chartAxis').innerHTML=`<span>${n} days ago</span><span>Today</span>`;
+  }
+  $('#rangePicker').addEventListener('click',(e)=>{
+    const b=e.target.closest('button'); if(!b) return;
+    activeRange=b.dataset.r; renderDashboard();
+  });
+
+  // ---------- Workout / session (mock, in-memory only) ----------
+  const EXERCISE_PRESETS=['Push-Up','Bench Press','Machine Biceps Curl','Lat Pulldown','Seated Row','Running','Tabata'];
+  const MOCK_SESSION_LOG=[
+    {id:'m1', ts:Date.now()-1*DAY_MS, name:'Back, Shoulders, Biceps', exCount:4, setCount:13, volume:1820},
+    {id:'m2', ts:Date.now()-3*DAY_MS, name:'Running', exCount:1, setCount:1, volume:0},
+    {id:'m3', ts:Date.now()-4*DAY_MS, name:'Push-Up', exCount:1, setCount:3, volume:0}
+  ];
+  let activeSession=null;
+  function freshMockSession(){
+    return {
+      title:'Evening Session', startedAt:Date.now(),
+      items:[
+        {type:'exercise', name:'Machine Biceps Curl', sets:[
+          {kg:35,reps:10,done:true},{kg:42,reps:10,done:true},{kg:42,reps:10,done:false}
+        ]},
+        {type:'exercise', name:'Lat Pulldown', sets:[
+          {kg:57,reps:8,done:true},{kg:57,reps:8,done:false}
+        ]},
+        {type:'hiit', name:'Tabata', moves:[
+          {name:'Push-Up',kg:0,reps:15},{name:'Squat',kg:0,reps:15}
+        ], runs:2}
+      ]
+    };
+  }
+  function renderExercisePresets(){
+    $('#exercisePresetList').innerHTML=EXERCISE_PRESETS.map(n=>`<div class="chip"><span>${escapeHtml(n)}</span></div>`).join('');
+  }
+  function renderWorkout(){
+    if(activeSession){
+      $('#workoutIdle').style.display='none';
+      $('#workoutActive').style.display='block';
+      $('#sessionTitle').textContent=activeSession.title;
+      $('#sessionSub').textContent='Started '+relDate(activeSession.startedAt);
+      renderSessionItems();
+    } else {
+      $('#workoutIdle').style.display='block';
+      $('#workoutActive').style.display='none';
+      renderExercisePresets();
+    }
+  }
+  function renderSessionItems(){
+    const wrap=$('#sessionItems'); wrap.innerHTML='';
+    activeSession.items.forEach(item=>{
+      const card=document.createElement('div'); card.className='itemcard';
+      if(item.type==='exercise'){
+        card.innerHTML=`
+          <div class="ihead"><b>${escapeHtml(item.name)}</b><span class="badge">${item.sets.length} sets</span></div>
+          <div class="setlist"></div>
+          <button class="addrow" data-act="addset">+ Add set</button>`;
+        const list=card.querySelector('.setlist');
+        item.sets.forEach((s,si)=>{
+          const row=document.createElement('div'); row.className='setrow';
+          row.innerHTML=`
+            <div class="si">Set ${si+1}</div>
+            <input type="number" inputmode="decimal" value="${s.kg}" placeholder="kg">
+            <input type="number" inputmode="numeric" value="${s.reps}" placeholder="reps">
+            <div class="check ${s.done?'on':''}">✓</div>`;
+          const [kgI,repsI]=row.querySelectorAll('input');
+          kgI.addEventListener('input',()=>{ s.kg=Number(kgI.value)||0; });
+          repsI.addEventListener('input',()=>{ s.reps=Number(repsI.value)||0; });
+          row.querySelector('.check').addEventListener('click',()=>{ s.done=!s.done; renderSessionItems(); });
+          list.appendChild(row);
+        });
+        card.querySelector('[data-act=addset]').addEventListener('click',()=>{
+          const last=item.sets[item.sets.length-1];
+          item.sets.push({kg:last?last.kg:0, reps:last?last.reps:0, done:false});
+          renderSessionItems();
+        });
+      } else {
+        card.innerHTML=`
+          <div class="ihead"><b>${escapeHtml(item.name)}</b><span class="badge">Ran ${item.runs}×</span></div>
+          <div class="setlist"></div>
+          <button class="addrow" data-act="addmove">+ Add next</button>
+          <button class="hiitstart" data-act="start">▶ Start</button>`;
+        const list=card.querySelector('.setlist');
+        item.moves.forEach(m=>{
+          const row=document.createElement('div'); row.className='setrow';
+          row.innerHTML=`
+            <div class="si">${escapeHtml(m.name)}</div>
+            <input type="number" inputmode="decimal" value="${m.kg}" placeholder="kg">
+            <input type="number" inputmode="numeric" value="${m.reps}" placeholder="reps">
+            <div></div>`;
+          const [kgI,repsI]=row.querySelectorAll('input');
+          kgI.addEventListener('input',()=>{ m.kg=Number(kgI.value)||0; });
+          repsI.addEventListener('input',()=>{ m.reps=Number(repsI.value)||0; });
+          list.appendChild(row);
+        });
+        card.querySelector('[data-act=addmove]').addEventListener('click',()=>{
+          item.moves.push({name:'Move '+(item.moves.length+1), kg:0, reps:10});
+          renderSessionItems();
+        });
+        card.querySelector('[data-act=start]').addEventListener('click',()=>{
+          item.runs++; renderSessionItems();
+          startWorkout(item.name);
+        });
+      }
+      wrap.appendChild(card);
+    });
+  }
+  $('#startSessionBtn').addEventListener('click',()=>{ activeSession=freshMockSession(); renderWorkout(); });
+  $('#addExerciseBtn').addEventListener('click',()=>{
+    activeSession.items.push({type:'exercise', name:'New Exercise', sets:[{kg:0,reps:0,done:false}]});
+    renderSessionItems();
+  });
+  $('#addHiitBtn').addEventListener('click',()=>{
+    activeSession.items.push({type:'hiit', name:'HIIT', moves:[], runs:0});
+    renderSessionItems();
+  });
+  $('#finishSessionBtn').addEventListener('click',()=>{
+    if(confirm('Finish this workout?')){ activeSession=null; toast('Workout finished (demo)'); renderWorkout(); }
+  });
+
+  // ---------- Session log (mock) ----------
+  function renderSessionLog(){
+    const list=$('#sessionLogList');
+    if(!MOCK_SESSION_LOG.length){
+      list.innerHTML=`<div class="empty"><span class="em">📒</span>No sessions yet.</div>`;
+      return;
+    }
+    list.innerHTML='';
+    MOCK_SESSION_LOG.forEach(e=>{
+      const item=document.createElement('div'); item.className='logitem';
+      item.innerHTML=`
+        <div class="meta">
+          <b>${escapeHtml(e.name)}</b>
+          <div class="sub">${relDate(e.ts)} · ${e.exCount} exercises · ${e.setCount} sets</div>
+        </div>
+        <div class="dur"><b>${e.volume?e.volume+' kg':'—'}</b><br><span style="color:var(--muted);font-size:12px">volume</span></div>`;
+      list.appendChild(item);
+    });
+  }
+
   // ---------- Navigation ----------
   function showView(name){
     $$('.view').forEach(v=>v.classList.toggle('active', v.id===name));
-    $('#tabTimer').classList.toggle('active', name==='setup');
+    $('#tabDash').classList.toggle('active', name==='dashboard');
+    $('#tabWorkout').classList.toggle('active', name==='workout');
     $('#tabLog').classList.toggle('active', name==='log');
-    if(name==='log') renderLog();
+    if(name==='dashboard') renderDashboard();
+    if(name==='workout') renderWorkout();
+    if(name==='log'){ renderSessionLog(); renderLog(); }
   }
-  $('#tabTimer').addEventListener('click',()=>showView('setup'));
+  $('#tabDash').addEventListener('click',()=>showView('dashboard'));
+  $('#tabWorkout').addEventListener('click',()=>showView('workout'));
   $('#tabLog').addEventListener('click',()=>showView('log'));
-  $('#startBtn').addEventListener('click',()=>startWorkout());
 
   // ---------- Settings ----------
   function renderSettings(){
@@ -843,7 +1110,9 @@
       if(e.code==='Enter') $('#doneAgain').click();
       else if(e.code==='Escape') $('#doneClose').click();
     } else {
-      if(e.code==='Space'){ e.preventDefault(); $('#startBtn').click(); }
+      if(e.code==='Space' && document.getElementById('workout').classList.contains('active')){
+        e.preventDefault(); $('#startSessionBtn')?.click();
+      }
     }
   });
 
@@ -851,6 +1120,9 @@
   renderConfig();
   renderPresets();
   renderLog();
+  renderDashboard();
+  renderWorkout();
+  renderSessionLog();
 
   if('serviceWorker' in navigator){
     window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
