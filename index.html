@@ -377,13 +377,9 @@
       <h2 class="sectiontitle">Sessions</h2>
       <div id="sessionLogList"></div>
 
-      <h2 class="sectiontitle" style="margin-top:22px">Quick timer runs</h2>
-      <div class="stats-grid" id="statsGrid"></div>
-      <div id="logList"></div>
-      <div class="linkrow">
+      <div class="linkrow" style="margin-top:22px">
         <button class="linkbtn" id="exportBtn">⬆︎ Export</button>
         <button class="linkbtn" id="importBtn">⬇︎ Import</button>
-        <button class="linkbtn danger" id="clearBtn">Clear log</button>
       </div>
       <input type="file" id="importFile" accept="application/json" hidden>
       <div style="height:16px"></div>
@@ -905,6 +901,7 @@
     return streak;
   }
   function renderLog(){
+    if(!$('#logList')) return; // legacy quick-timer log UI removed; runs still recorded for export
     const log=load(LS.log,[]);
     const totalWork=log.reduce((a,e)=>a+(e.workSec||0),0);
     const weekAgo=Date.now()-7*864e5;
@@ -937,9 +934,6 @@
       list.appendChild(item);
     });
   }
-  $('#clearBtn').addEventListener('click',()=>{
-    if(load(LS.log,[]).length && confirm('Delete the entire workout log?')){ save(LS.log,[]); renderLog(); toast('Log cleared'); }
-  });
   $('#exportBtn').addEventListener('click',()=>{
     const data={app:'interval',version:2,exportedAt:new Date().toISOString(),presets:userPresets,log:load(LS.log,[]),sessions:getSessions(),exercises:getCatalog()};
     const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
