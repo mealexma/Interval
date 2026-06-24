@@ -818,6 +818,11 @@
       renderLog();
     }
     $('#run').classList.remove('show');
+    // count this HIIT run on the session card (covers both the card Start and the "Again" re-run)
+    if(activeHiitItem && entry.rounds>0){
+      activeHiitItem.runs++;
+      if(activeSession) renderSessionItems();
+    }
     showDone(entry, completed);
   }
 
@@ -833,7 +838,7 @@
     $('#doneRounds').textContent=entry.rounds;
     $('#done').classList.add('show');
   }
-  $('#doneClose').addEventListener('click',()=>{ $('#done').classList.remove('show'); });
+  $('#doneClose').addEventListener('click',()=>{ $('#done').classList.remove('show'); activeHiitItem=null; });
   $('#doneAgain').addEventListener('click',()=>{ $('#done').classList.remove('show'); startWorkout(); });
 
   // ---------- Log ----------
@@ -967,6 +972,7 @@
     {id:'m3', ts:Date.now()-4*DAY_MS, name:'Push-Up', exCount:1, setCount:3, volume:0}
   ];
   let activeSession=null;
+  let activeHiitItem=null; // the HIIT block whose timer is currently running
   function freshMockSession(){
     return {
       title:'Evening Session', startedAt:Date.now(),
@@ -1062,7 +1068,7 @@
           openPicker({mode:'move', item});
         });
         card.querySelector('[data-act=start]').addEventListener('click',()=>{
-          item.runs++; renderSessionItems();
+          activeHiitItem=item;            // counted on finish, so the "Again" re-run path counts too
           startWorkout(item.name);
         });
       }
@@ -1105,7 +1111,7 @@
     renderSessionItems();
   });
   $('#finishSessionBtn').addEventListener('click',()=>{
-    if(confirm('Finish this workout?')){ activeSession=null; toast('Workout finished (demo)'); renderWorkout(); }
+    if(confirm('Finish this workout?')){ activeSession=null; activeHiitItem=null; toast('Workout finished (demo)'); renderWorkout(); }
   });
 
   // ---------- Session log (mock) ----------
