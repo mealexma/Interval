@@ -170,6 +170,7 @@
   .logitem .meta .tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:6px;margin-left:6px;vertical-align:middle}
   .tag.partial{background:rgba(245,158,11,.16);color:#fcd34d}
   .tag.done{background:rgba(34,197,94,.16);color:#86efac}
+  .tag.imported{background:rgba(147,163,181,.16);color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-size:10px;font-weight:700}
   .logitem .dur{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
   .logitem .dur b{font-size:19px;font-weight:800;letter-spacing:-.3px}
   .logitem .del{color:var(--muted);font-size:18px;padding:4px 6px;cursor:pointer}
@@ -243,6 +244,30 @@
   .pickgroupbody{display:none;padding:10px 10px 2px}
   .pickgroup.open .pickgroupbody{display:block}
 
+  /* ---- history import sheet ---- */
+  #histSheet{position:fixed;inset:0;z-index:76;display:none;align-items:flex-end}
+  #histSheet.show{display:flex}
+  #histSheet .scrim{position:absolute;inset:0;background:rgba(0,0,0,.55)}
+  #histSheet .sheet{
+    position:relative;width:100%;max-width:520px;margin:0 auto;
+    background:var(--panel);border-radius:20px 20px 0 0;border:0;
+    padding:18px 18px calc(var(--safe-b) + 18px);animation:slideup .25s ease;
+    max-height:88vh;overflow-y:auto;
+  }
+  #histSheet h2{margin:2px 0 8px;font-size:22px;font-weight:800;letter-spacing:-.3px}
+  .hhint{color:var(--muted);font-size:13px;margin:0 0 12px;line-height:1.5}
+  #histText{
+    width:100%;min-height:132px;resize:vertical;background:var(--panel2);border:0;color:var(--text);
+    border-radius:12px;padding:12px;font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;
+    -webkit-user-select:text;user-select:text;
+  }
+  #histText:focus{outline:none;box-shadow:inset 0 0 0 2px var(--accent)}
+  .hprev{margin-top:12px;font-size:13px;color:var(--muted);line-height:1.6}
+  .hprev b{color:var(--text);font-weight:700}
+  .hprev .warn{color:#fcd34d}
+  .hprev .bad{color:#fca5a5}
+  #histManage{margin-top:14px;font-size:13px;color:var(--muted);display:flex;justify-content:space-between;align-items:center;gap:10px}
+  #histManage button{background:transparent;border:0;color:#fca5a5;font-size:13px;font-weight:600;cursor:pointer;padding:6px 0}
   .toast{
     position:fixed;left:50%;bottom:calc(var(--safe-b) + 92px);transform:translateX(-50%) translateY(20px);
     background:var(--panel2);border:0;color:var(--text);padding:11px 18px;border-radius:999px;
@@ -407,6 +432,7 @@
       <div class="linkrow" style="margin-top:22px">
         <button class="linkbtn" id="exportBtn">⬆︎ Export</button>
         <button class="linkbtn" id="importBtn">⬇︎ Import</button>
+        <button class="linkbtn" id="histBtn">📅 History</button>
       </div>
       <input type="file" id="importFile" accept="application/json" hidden>
       <div style="height:16px"></div>
@@ -541,6 +567,25 @@
       <input type="text" id="newCatName" placeholder="New category…" maxlength="24" autocomplete="off">
       <button class="iconbtn" id="newCatOk" style="width:auto;padding:0 16px">＋</button>
     </div>
+  </div>
+</div>
+
+<!-- ===== IMPORT PAST WORKOUT DAYS ===== -->
+<div id="histSheet">
+  <div class="scrim" id="histScrim"></div>
+  <div class="sheet">
+    <h2>Import history</h2>
+    <p class="hhint">Paste the dates you trained — one per line, or a CSV export from another app. Only the day is used; no exercise data needed.</p>
+    <textarea id="histText" placeholder="2025-03-14&#10;2025-03-16&#10;18/03/2025&#10;Mar 21, 2025"></textarea>
+    <div class="linkrow" style="margin-top:10px">
+      <button class="linkbtn" id="histFileBtn">📄 Choose file</button>
+      <button class="linkbtn" id="histClearBtn">Clear</button>
+    </div>
+    <input type="file" id="histFile" accept=".csv,.txt,.json,text/csv,text/plain" hidden>
+    <div id="histPreview" class="hprev"></div>
+    <button class="bigbtn" id="histImportBtn" style="margin-top:12px">Import days</button>
+    <div id="histManage"></div>
+    <button class="done-btn" id="histClose">Close</button>
   </div>
 </div>
 
@@ -1027,6 +1072,98 @@
     return streak;
   }
 
+  // ---------- Import past workout days ----------
+  // Only the calendar day matters: an imported session has no items, it just
+  // records "I trained on this day" so streaks/heatmap/counts reflect reality.
+  function parseHistoryDates(text){
+    const days=new Set(); let bad=0, seen=0;
+    const push=(y,m,d)=>{                       // m is 1-based
+      if(!(y>=1970&&y<=2999&&m>=1&&m<=12&&d>=1&&d<=31)) return false;
+      const dt=new Date(y,m-1,d);
+      if(dt.getFullYear()!==y||dt.getMonth()!==m-1||dt.getDate()!==d) return false;
+      if(dt.getTime()>Date.now()+DAY_MS) return false;   // ignore future dates
+      dt.setHours(0,0,0,0); days.add(dt.getTime()); return true;
+    };
+    text.split(/[\r\n]+/).forEach(line=>{
+      const raw=line.trim(); if(!raw) return;
+      if(/^(date|start|workout|datum)\b/i.test(raw) && !/\d{4}/.test(raw)) return; // CSV header
+      seen++;
+      let m;
+      // ISO first: 2025-03-14 (also matches the date half of an ISO timestamp)
+      if((m=raw.match(/(\d{4})-(\d{1,2})-(\d{1,2})/))){ if(push(+m[1],+m[2],+m[3])) return; }
+      // slash/dot forms: 14/03/2025 or 03.14.2025 — day-first unless impossible
+      if((m=raw.match(/\b(\d{1,2})[\/.](\d{1,2})[\/.](\d{4})\b/))){
+        const a=+m[1], b=+m[2], y=+m[3];
+        if(a>12){ if(push(y,b,a)) return; }        // must be day-first
+        else if(b>12){ if(push(y,a,b)) return; }   // must be month-first
+        else if(push(y,b,a)) return;               // ambiguous → day-first (ISO-ish regions)
+      }
+      // textual: "Mar 21, 2025" / "21 March 2025"
+      const t=Date.parse(raw);
+      if(!isNaN(t)){ const d=new Date(t); if(push(d.getFullYear(),d.getMonth()+1,d.getDate())) return; }
+      bad++;
+    });
+    return {days:[...days].sort((a,b)=>a-b), bad, seen};
+  }
+  function importedCount(){ return getSessions().filter(s=>s.source==='import').length; }
+  function renderHistPreview(){
+    const el=$('#histPreview'); const txt=$('#histText').value;
+    if(!txt.trim()){ el.innerHTML=''; return null; }
+    const {days,bad,seen}=parseHistoryDates(txt);
+    const have=new Set(getSessions().map(s=>dayKey(s.startedAt)));
+    const fresh=days.filter(d=>!have.has(d));
+    const dupes=days.length-fresh.length;
+    if(!days.length){ el.innerHTML=`<span class="bad">No dates recognised in ${seen} line${seen===1?'':'s'}.</span>`; return null; }
+    const fmt=t=>{ const d=new Date(t); return `${d.getDate()} ${MON_NAMES[d.getMonth()]} ${d.getFullYear()}`; };
+    el.innerHTML=`Found <b>${days.length}</b> workout day${days.length===1?'':'s'}`
+      +` · <b>${fresh.length}</b> new`
+      +(dupes?` · <span class="warn">${dupes} already logged</span>`:'')
+      +(bad?` · <span class="warn">${bad} line${bad===1?'':'s'} skipped</span>`:'')
+      +(days.length?`<br>${fmt(days[0])} → ${fmt(days[days.length-1])}`:'');
+    return fresh;
+  }
+  function renderHistManage(){
+    const n=importedCount();
+    $('#histManage').innerHTML = n
+      ? `<span><b style="color:var(--text)">${n}</b> imported day${n===1?'':'s'} in your log</span><button id="histWipe">Remove all</button>`
+      : '';
+    const wipe=$('#histWipe');
+    if(wipe) wipe.addEventListener('click',()=>{
+      if(!confirm(`Remove all ${n} imported day${n===1?'':'s'}? Workouts you logged in this app are kept.`)) return;
+      saveSessions(getSessions().filter(s=>s.source!=='import'));
+      renderHistManage(); renderHistPreview(); renderSessionLog(); renderFunStats(); renderDashboard();
+      toast('Imported days removed');
+    });
+  }
+  function openHistSheet(){ renderHistPreview(); renderHistManage(); $('#histSheet').classList.add('show'); }
+  function closeHistSheet(){ $('#histSheet').classList.remove('show'); }
+  $('#histBtn').addEventListener('click',openHistSheet);
+  $('#histScrim').addEventListener('click',closeHistSheet);
+  $('#histClose').addEventListener('click',closeHistSheet);
+  $('#histText').addEventListener('input',renderHistPreview);
+  $('#histClearBtn').addEventListener('click',()=>{ $('#histText').value=''; renderHistPreview(); });
+  $('#histFileBtn').addEventListener('click',()=>$('#histFile').click());
+  $('#histFile').addEventListener('change',(e)=>{
+    const f=e.target.files[0]; if(!f) return;
+    const r=new FileReader();
+    r.onload=()=>{ $('#histText').value=String(r.result).slice(0,500000); renderHistPreview(); $('#histFile').value=''; };
+    r.readAsText(f);
+  });
+  $('#histImportBtn').addEventListener('click',()=>{
+    const fresh=renderHistPreview();
+    if(!fresh){ toast('Nothing to import'); return; }
+    if(!fresh.length){ toast('Those days are already logged'); return; }
+    const arr=getSessions();
+    fresh.forEach(d=>{
+      arr.push({id:uid(), startedAt:d+12*3600e3, endedAt:d+12*3600e3, title:'Workout', items:[], source:'import'});
+    });
+    arr.sort((a,b)=>b.startedAt-a.startedAt);
+    saveSessions(arr);
+    $('#histText').value='';
+    renderHistPreview(); renderHistManage(); renderSessionLog(); renderFunStats(); renderDashboard();
+    toast(`Imported ${fresh.length} day${fresh.length===1?'':'s'}`);
+  });
+
   // ---------- Dashboard ----------
   // GitHub-style consistency heatmap: 52 weeks, Mon-first columns, intensity by
   // that day's total sets+runs bucketed into quartiles of the user's own history.
@@ -1035,7 +1172,8 @@
     const grid=$('#heatGrid'); if(!grid) return;
     const sessions=getSessions();
     const score={};
-    sessions.forEach(s=>{ const k=dayKey(s.startedAt); score[k]=(score[k]||0)+sessionSetCount(s); });
+    // a session always counts as activity — imported "I trained" days carry no sets
+    sessions.forEach(s=>{ const k=dayKey(s.startedAt); score[k]=(score[k]||0)+Math.max(1,sessionSetCount(s)); });
     const today=dayKey(Date.now());
     const mondayOffset=((new Date().getDay())+6)%7;          // days since Monday
     const end=today+(6-mondayOffset)*DAY_MS;                 // Sunday closing this week
@@ -1463,6 +1601,7 @@
 
   // ---------- Session log ----------
   function sessionDetailHtml(s){
+    if(s.source==='import') return '<div class="dsub">Imported from another app — day only, no exercise data.</div>';
     return s.items.map(it=>{
       if(it.type==='exercise'){
         const rows=it.sets.map((st,i)=>`<div class="dsub">Set ${i+1}: ${st.kg||0}kg × ${st.reps||0}${st.done?' ✓':''}</div>`).join('');
@@ -1508,13 +1647,17 @@
     sessions.forEach(s=>{
       const item=document.createElement('div'); item.className='logitem session-row';
       const vol=sessionVolume(s);
+      const imported=s.source==='import';
+      const sub = imported
+        ? `${relDate(s.startedAt)} · imported`
+        : `${relDate(s.startedAt)} · ${sessionExCount(s)} exercises · ${sessionSetCount(s)} sets`;
       item.innerHTML=`
         <div class="meta">
-          <b>${escapeHtml(s.title||'Workout')}</b>
-          <div class="sub">${relDate(s.startedAt)} · ${sessionExCount(s)} exercises · ${sessionSetCount(s)} sets</div>
+          <b>${escapeHtml(s.title||'Workout')}</b>${imported?'<span class="tag imported">past</span>':''}
+          <div class="sub">${sub}</div>
           <div class="sessdetail" style="display:none"></div>
         </div>
-        <div class="dur"><b>${vol?vol+' kg':'—'}</b><br><span style="color:var(--muted);font-size:12px">volume</span></div>
+        <div class="dur"><b>${vol?vol+' kg':'—'}</b><br><span style="color:var(--muted);font-size:12px">${imported?'no data':'volume'}</span></div>
         <div class="del" data-id="${s.id}">🗑</div>`;
       const detail=item.querySelector('.sessdetail');
       item.querySelector('.meta').addEventListener('click',()=>{
