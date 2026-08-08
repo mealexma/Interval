@@ -1,7 +1,7 @@
 /* Interval — HIIT Timer. Service worker: cache-first app shell, fully offline after first load. */
 'use strict';
 
-const CACHE_NAME = 'interval-hiit-v12';
+const CACHE_NAME = 'interval-hiit-v13';
 const SHELL = [
   './',
   './index.html',

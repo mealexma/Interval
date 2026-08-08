@@ -251,6 +251,23 @@
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
   /* ---- dashboard ---- */
+  /* contribution-style heatmap: sequential green ramp on the dark surface */
+  .heatwrap{margin-bottom:18px}
+  .heathead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+  .heatsub{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+  .heatscroll{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .heatscroll::-webkit-scrollbar{display:none}
+  .heatmonths{display:grid;grid-auto-flow:column;grid-auto-columns:14px;font-size:10px;color:var(--muted);margin-bottom:5px}
+  .heatmonths span{white-space:nowrap;overflow:visible}
+  .heatgrid{display:grid;grid-template-rows:repeat(7,11px);grid-auto-flow:column;grid-auto-columns:14px;row-gap:3px}
+  .heatgrid i,.heatlegend i{width:11px;height:11px;border-radius:3px;background:#141c26;display:inline-block}
+  .hm1{background:#0e4429!important}
+  .hm2{background:#006d32!important}
+  .hm3{background:#26a641!important;box-shadow:0 0 5px rgba(38,166,65,.35)}
+  .hm4{background:#39d353!important;box-shadow:0 0 7px rgba(57,211,83,.55)}
+  .heatgrid i.today{box-shadow:inset 0 0 0 1px rgba(255,255,255,.4)}
+  .heatgrid i.future{visibility:hidden}
+  .heatlegend{display:flex;align-items:center;gap:4px;justify-content:flex-end;margin-top:7px;font-size:10px;color:var(--muted)}
   .rangepicker{display:flex;gap:6px;margin-bottom:14px}
   .rangepicker button{
     flex:1;background:transparent;border:0;color:var(--muted);
@@ -333,6 +350,14 @@
   <main>
     <!-- ===== DASHBOARD ===== -->
     <section id="dashboard" class="view active">
+      <div class="heatwrap">
+        <div class="heathead"><h2 class="sectiontitle" style="margin:0">Consistency</h2><span class="heatsub" id="heatSub"></span></div>
+        <div class="heatscroll" id="heatScroll">
+          <div class="heatmonths" id="heatMonths"></div>
+          <div class="heatgrid" id="heatGrid"></div>
+        </div>
+        <div class="heatlegend">Less <i class="hm0"></i><i class="hm1"></i><i class="hm2"></i><i class="hm3"></i><i class="hm4"></i> More</div>
+      </div>
       <div class="stats-grid" id="dashStats"></div>
       <div class="chart-card">
         <h2>Activity</h2>
@@ -1004,8 +1029,50 @@
   }
 
   // ---------- Dashboard ----------
+  // GitHub-style consistency heatmap: 52 weeks, Mon-first columns, intensity by
+  // that day's total sets+runs bucketed into quartiles of the user's own history.
+  const MON_NAMES=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function renderHeatmap(){
+    const grid=$('#heatGrid'); if(!grid) return;
+    const sessions=getSessions();
+    const score={};
+    sessions.forEach(s=>{ const k=dayKey(s.startedAt); score[k]=(score[k]||0)+sessionSetCount(s); });
+    const today=dayKey(Date.now());
+    const mondayOffset=((new Date().getDay())+6)%7;          // days since Monday
+    const end=today+(6-mondayOffset)*DAY_MS;                 // Sunday closing this week
+    const WEEKS=52, start=end-(WEEKS*7-1)*DAY_MS;
+    const vals=Object.values(score).filter(v=>v>0).sort((a,b)=>a-b);
+    const q=p=>vals.length?vals[Math.min(vals.length-1,Math.floor(p*vals.length))]:1;
+    const t1=q(.25), t2=q(.5), t3=q(.75);
+    const lvl=v=>!v?0: v<=t1?1: v<=t2?2: v<=t3?3: 4;
+    let cells='', monthsHtml='', lastMonth=-1;
+    for(let w=0;w<WEEKS;w++){
+      const wkStart=start+w*7*DAY_MS;
+      const m=new Date(wkStart).getMonth();
+      monthsHtml+=`<span>${m!==lastMonth&&w>0?MON_NAMES[m]:''}</span>`;
+      lastMonth=m;
+      for(let d=0;d<7;d++){
+        const day=wkStart+d*DAY_MS;
+        const v=score[day]||0;
+        const cls=[v?'hm'+lvl(v):'', day===today?'today':'', day>today?'future':''].filter(Boolean).join(' ');
+        cells+=`<i${cls?` class="${cls}"`:''} data-d="${day}" data-v="${v}"></i>`;
+      }
+    }
+    $('#heatMonths').innerHTML=monthsHtml;
+    grid.innerHTML=cells;
+    const daysHit=Object.keys(score).filter(k=>k>=start&&k<=today).length;
+    $('#heatSub').textContent=`${daysHit} active day${daysHit===1?'':'s'} this year`;
+    const sc=$('#heatScroll'); sc.scrollLeft=sc.scrollWidth;   // land on "now"
+  }
+  $('#heatGrid').addEventListener('click',(e)=>{
+    const c=e.target.closest('i'); if(!c) return;
+    const d=new Date(Number(c.dataset.d)), v=Number(c.dataset.v);
+    const label=`${d.getDate()} ${MON_NAMES[d.getMonth()]}`;
+    toast(v?`${label} · ${v} set${v===1?'':'s'}`:`${label} · rest day`);
+  });
   let activeRange='7';
   function renderDashboard(){
+    renderHeatmap();
     const sessions=getSessions();
     const days = activeRange==='year' ? 365 : parseInt(activeRange,10);
     const today=dayKey(Date.now());
