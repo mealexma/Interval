@@ -39,7 +39,7 @@
     display:flex; align-items:center; justify-content:space-between;
     padding:6px 2px 14px;
   }
-  header.bar h1{font-size:20px;margin:0;display:flex;align-items:center;gap:9px;letter-spacing:.2px}
+  header.bar h1{font-size:22px;font-weight:800;margin:0;display:flex;align-items:center;gap:9px;letter-spacing:-.3px}
   header.bar .logo{
     width:30px;height:30px;border-radius:9px;
     background:linear-gradient(160deg,#ef4444,#f97316);
@@ -57,7 +57,7 @@
   @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 
   /* ---- Setup ---- */
-  .card{background:var(--panel);border:0;border-radius:var(--r);padding:14px;margin-bottom:14px}
+  .card{background:transparent;border:0;border-radius:0;padding:14px 0;margin-bottom:14px}
   .card h2{margin:0 0 10px;font-size:13px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted)}
   .stepper{
     display:flex;align-items:center;justify-content:space-between;
@@ -151,15 +151,15 @@
 
   /* ---- Log ---- */
   .stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}
-  .stat{background:var(--panel);border:0;border-radius:14px;padding:12px 14px}
-  .stat b{display:block;font-size:24px;font-variant-numeric:tabular-nums}
-  .stat span{color:var(--muted);font-size:12px}
+  .stat{background:transparent;border:0;border-radius:0;padding:8px 2px}
+  .stat b{display:block;font-size:30px;font-weight:800;letter-spacing:-.5px;font-variant-numeric:tabular-nums;line-height:1.15}
+  .stat span{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.8px}
   .logitem{
-    background:var(--panel);border:0;border-radius:14px;
-    padding:12px 14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:10px;
+    background:transparent;border:0;border-radius:0;
+    padding:12px 2px;margin-bottom:2px;display:flex;justify-content:space-between;align-items:center;gap:10px;
   }
   .logitem .meta{flex:1;min-width:0}
-  .logitem .meta b{font-size:15px}
+  .logitem .meta b{font-size:17px;font-weight:700;letter-spacing:-.2px}
   .logitem .meta .sub{color:var(--muted);font-size:13px;margin-top:2px}
   .session-row{align-items:flex-start}
   .session-row .meta{cursor:pointer}
@@ -171,14 +171,14 @@
   .tag.partial{background:rgba(245,158,11,.16);color:#fcd34d}
   .tag.done{background:rgba(34,197,94,.16);color:#86efac}
   .logitem .dur{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-  .logitem .dur b{font-size:17px}
+  .logitem .dur b{font-size:19px;font-weight:800;letter-spacing:-.3px}
   .logitem .del{color:var(--muted);font-size:18px;padding:4px 6px;cursor:pointer}
   .logitem .del:active{color:var(--danger)}
   .sectiontitle{margin:0 0 10px;font-size:13px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted)}
   .empty{text-align:center;color:var(--muted);padding:48px 16px}
   .empty .em{font-size:46px;display:block;margin-bottom:10px}
   .linkrow{display:flex;gap:8px;margin-top:6px}
-  .linkbtn{flex:1;background:var(--panel);border:0;color:var(--text);border-radius:12px;padding:11px;font-size:14px;cursor:pointer}
+  .linkbtn{flex:1;background:transparent;border:0;color:var(--muted);border-radius:12px;padding:11px;font-size:14px;font-weight:600;cursor:pointer}
   .linkbtn:active{transform:scale(.97)}
   .linkbtn.danger{color:#fca5a5}
 
@@ -274,16 +274,16 @@
     border-radius:10px;padding:9px 0;font-size:13px;font-weight:600;cursor:pointer;
   }
   .rangepicker button.active{color:var(--accent);background:rgba(34,197,94,.1)}
-  .chart-card{background:var(--panel);border:0;border-radius:var(--r);padding:14px 10px 10px;margin-bottom:14px}
+  .chart-card{background:transparent;border:0;border-radius:0;padding:6px 0 10px;margin-bottom:14px}
   .chart-card h2{margin:0 0 10px 4px;font-size:13px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted)}
   .chart-card svg{width:100%;height:140px;display:block}
   .chart-card .axis{display:flex;justify-content:space-between;padding:6px 4px 0;font-size:11px;color:var(--muted)}
 
   /* ---- workout / session cards ---- */
   .session-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px}
-  .session-head h2{margin:0;font-size:19px}
+  .session-head h2{margin:0;font-size:26px;font-weight:800;letter-spacing:-.4px}
   .session-head .sub{color:var(--muted);font-size:13px;margin-top:2px}
-  .itemcard{background:var(--panel);border:0;border-radius:var(--r);padding:14px;margin-bottom:12px}
+  .itemcard{background:transparent;border:0;border-radius:0;padding:14px 0;margin-bottom:4px}
   .itemcard .ihead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;cursor:pointer;-webkit-user-select:none;user-select:none}
   .itemcard .ihead .ttl{display:flex;align-items:center;gap:8px;min-width:0}
   .itemcard .ihead .chev{color:var(--muted);font-size:12px;transition:transform .18s ease;flex:none}
@@ -298,21 +298,20 @@
   .itemcard .ihead .right{display:flex;align-items:center;gap:8px;flex:none}
   .delx{width:26px;height:26px;border-radius:8px;border:0;background:transparent;color:var(--muted);display:grid;place-items:center;font-size:15px;cursor:pointer;flex:none;padding:0;line-height:1}
   .delx:active{transform:scale(.9);color:var(--danger);border-color:var(--danger)}
-  .itemcard.done{background:rgba(34,197,94,.06)}
   .itemcard.done .ihead b{color:var(--muted);text-decoration:line-through}
-  .itemcard .ihead b{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .itemcard .ihead b{font-size:18px;font-weight:800;letter-spacing:-.3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .itemcard .ihead .badge{font-size:11px;color:var(--muted);background:transparent;padding:3px 0;border-radius:7px;white-space:nowrap}
   .itemcard .ihead .badge.ok{color:#04210f;background:var(--accent)}
   .swipe{position:relative;overflow:hidden;border-radius:9px}
   .swipe-del{position:absolute;inset:0 0 0 auto;width:84px;border:0;background:var(--danger);color:#fff;font-weight:700;font-size:13px;cursor:pointer}
   .swipe-del:active{filter:brightness(.9)}
-  .setrow{display:grid;grid-template-columns:1fr 64px 64px 34px;gap:7px;align-items:center;padding:5px 4px;background:var(--panel);position:relative;transition:transform .18s ease;touch-action:pan-y}
+  .setrow{display:grid;grid-template-columns:1fr 64px 64px 34px;gap:7px;align-items:center;padding:5px 4px;background:var(--bg);position:relative;transition:transform .18s ease;touch-action:pan-y}
   .setrow.moverow{grid-template-columns:1fr 64px auto 34px}
   .moverow .amrap{font-size:10px;font-weight:700;letter-spacing:.5px;color:var(--muted);text-align:center}
   .setrow .si{color:var(--muted);font-size:13px}
   .setrow input[type=number]{
-    width:100%;background:var(--panel2);border:0;color:var(--text);
-    border-radius:9px;padding:8px 4px;font-size:14px;text-align:center;-webkit-user-select:text;user-select:text;
+    width:100%;background:transparent;border:0;color:var(--text);
+    border-radius:9px;padding:8px 4px;font-size:16px;font-weight:700;text-align:center;-webkit-user-select:text;user-select:text;
   }
   .setrow input[type=number]:focus{outline:none;box-shadow:inset 0 0 0 2px var(--accent)}
   .check{
