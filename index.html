@@ -311,6 +311,12 @@
   .session-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px}
   .session-head h2{margin:0;font-size:26px;font-weight:800;letter-spacing:-.4px}
   .session-head .sub{color:var(--muted);font-size:13px;margin-top:2px}
+  /* tap the date line to backdate the session */
+  .datebtn{background:transparent;border:0;padding:2px 0;text-align:left;cursor:pointer;font:inherit;color:var(--muted);font-size:13px;display:inline-flex;align-items:center;gap:6px}
+  .datebtn::after{content:"▾";font-size:9px;opacity:.7}
+  .datebtn:active{color:var(--text)}
+  .datebtn.past{color:var(--accent)}
+  #sessionDate{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
   .itemcard{background:transparent;border:0;border-radius:0;padding:14px 0;margin-bottom:4px}
   .itemcard .ihead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;cursor:pointer;-webkit-user-select:none;user-select:none}
   .itemcard .ihead .ttl{display:flex;align-items:center;gap:8px;min-width:0}
@@ -412,7 +418,8 @@
         <div class="session-head">
           <div>
             <h2 id="sessionTitle">Workout</h2>
-            <div class="sub" id="sessionSub">Started just now</div>
+            <button class="sub datebtn" id="sessionSub">Started just now</button>
+            <input type="date" id="sessionDate" aria-label="Workout date">
           </div>
         </div>
         <div id="sessionItems"></div>
@@ -1258,18 +1265,43 @@
     return part+' Session';
   }
   function newSession(){ return {id:uid(), startedAt:Date.now(), title:sessionTitle(), items:[]}; }
+  const isoDay = ts => { const d=new Date(ts); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
   function renderWorkout(){
     if(activeSession){
       $('#workoutIdle').style.display='none';
       $('#workoutActive').style.display='block';
       $('#sessionTitle').textContent=activeSession.title;
-      $('#sessionSub').textContent='Started '+relDate(activeSession.startedAt);
+      const past = dayKey(activeSession.startedAt) < dayKey(Date.now());
+      const sub=$('#sessionSub');
+      sub.textContent = past ? relDate(activeSession.startedAt) : 'Started '+relDate(activeSession.startedAt);
+      sub.classList.toggle('past', past);
       renderSessionItems();
     } else {
       $('#workoutIdle').style.display='block';
       $('#workoutActive').style.display='none';
     }
   }
+  // backdate the session: tap the date line, pick a day (today or earlier)
+  $('#sessionSub').addEventListener('click',()=>{
+    if(!activeSession) return;
+    const inp=$('#sessionDate');
+    inp.value=isoDay(activeSession.startedAt);
+    inp.max=isoDay(Date.now());
+    if(inp.showPicker){ try{ inp.showPicker(); return; }catch(e){} }
+    inp.style.position='static'; inp.style.opacity='1'; inp.style.width='auto';
+    inp.style.height='auto'; inp.style.pointerEvents='auto'; inp.focus();
+  });
+  $('#sessionDate').addEventListener('change',(e)=>{
+    if(!activeSession || !e.target.value) return;
+    const [y,m,d]=e.target.value.split('-').map(Number);
+    const old=new Date(activeSession.startedAt);
+    // keep the original clock time so a backdated session still reads sensibly
+    const next=new Date(y, m-1, d, old.getHours(), old.getMinutes(), old.getSeconds());
+    if(next.getTime()>Date.now()) return;           // no future workouts
+    activeSession.startedAt=next.getTime();
+    saveActive(); renderWorkout();
+    toast('Dated '+relDate(activeSession.startedAt).replace(/\s\d{1,2}:\d{2}.*/,''));
+  });
   // tapping a kg/reps field clears it so you can type fresh; restores the value if left blank
   function bindNumInput(input, get, set){
     input.addEventListener('focus',()=>{ input.dataset.prev=String(get()); input.value=''; });
@@ -1660,7 +1692,8 @@
       return;
     }
     if(!confirm('Finish this workout?')) return;
-    activeSession.endedAt=Date.now();
+    // a backdated session never "ends" now — clamp so endedAt is never before startedAt
+    activeSession.endedAt = Math.max(activeSession.startedAt, Math.min(Date.now(), activeSession.startedAt+6*3600e3));
     activeSession.items.forEach(it=>{ // remember last-used kg/reps per exercise
       if(it.type==='exercise'){
         const s=it.sets[it.sets.length-1];
@@ -1670,9 +1703,12 @@
       }
       else it.moves.forEach(m=>setExMeta(m.name, {kg:Number(m.kg)||0, reps:0}));
     });
-    const arr=getSessions(); arr.unshift(activeSession); saveSessions(arr);
+    const arr=getSessions(); arr.push(activeSession);
+    arr.sort((a,b)=>b.startedAt-a.startedAt);   // keep the log in date order when backdated
+    saveSessions(arr);
+    const wasPast = dayKey(activeSession.startedAt) < dayKey(Date.now());
     activeSession=null; activeHiitItem=null; saveActive();
-    toast('Workout saved');
+    toast(wasPast?'Past workout saved':'Workout saved');
     renderWorkout(); renderDashboard(); renderSessionLog();
   }
 
