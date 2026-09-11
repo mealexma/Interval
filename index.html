@@ -231,6 +231,9 @@
   .pickrow{flex:1;text-align:left;background:var(--panel2);border:0;color:var(--text);border-radius:12px;padding:14px;font-size:15px;cursor:pointer;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .pickrow:active{transform:scale(.98)}
   .pickcat{flex:none;width:96px;background:var(--panel2);border:0;color:var(--muted);border-radius:12px;font-size:12px;padding:0 6px;cursor:pointer}
+  .pickkind{flex:none;width:38px;background:var(--panel2);border:0;color:var(--muted);border-radius:12px;font-size:14px;cursor:pointer}
+  .pickkind:active{transform:scale(.94);color:var(--accent)}
+  .kindtag{margin-left:8px;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--accent)}
   .pickdel{flex:none;width:46px;background:transparent;border:0;color:var(--muted);border-radius:12px;font-size:15px;cursor:pointer}
   .pickdel:active{transform:scale(.94);color:var(--danger)}
   /* category groups in the picker — collapsed by default */
@@ -332,13 +335,15 @@
   .swipe-del:active{filter:brightness(.9)}
   .setrow{display:grid;grid-template-columns:1fr 64px 64px 34px;gap:7px;align-items:center;padding:5px 4px;background:var(--bg);position:relative;transition:transform .18s ease;touch-action:pan-y}
   .setrow.moverow{grid-template-columns:1fr 64px auto 34px}
+  .setrow.timerow{grid-template-columns:1fr 72px 60px 34px}
+  .setrow .durin{font-variant-numeric:tabular-nums}
   .moverow .amrap{font-size:10px;font-weight:700;letter-spacing:.5px;color:var(--muted);text-align:center}
   .setrow .si{color:var(--muted);font-size:13px}
-  .setrow input[type=number]{
+  .setrow input[type=number],.setrow input[type=text]{
     width:100%;background:transparent;border:0;color:var(--text);
     border-radius:9px;padding:8px 4px;font-size:16px;font-weight:700;text-align:center;-webkit-user-select:text;user-select:text;
   }
-  .setrow input[type=number]:focus{outline:none;box-shadow:inset 0 0 0 2px var(--accent)}
+  .setrow input[type=number]:focus,.setrow input[type=text]:focus{outline:none;box-shadow:inset 0 0 0 2px var(--accent)}
   .check{
     width:30px;height:30px;border-radius:9px;border:0;background:var(--panel2);
     display:grid;place-items:center;cursor:pointer;color:transparent;font-size:15px;
@@ -601,6 +606,7 @@
     log:'interval.log', settings:'interval.settings',
     exercises:'interval.exercises',
     categories:'interval.categories', excat:'interval.excat', exmeta:'interval.exmeta',
+    exkind:'interval.exkind',
     sessions:'interval.sessions', active:'interval.active'
   };
   const uid = ()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
@@ -1319,38 +1325,69 @@
       if(item.collapsed) card.classList.add('collapsed');
       if(item.done) card.classList.add('done');
       if(item.type==='exercise'){
+        const isTimed = item.kind==='time';
+        const totalSecs = isTimed ? item.sets.reduce((a,x)=>a+(x.secs||0),0) : 0;
         const badge = item.done
           ? '<span class="badge ok">✓ Done</span>'
-          : `<span class="badge">${item.sets.length} sets</span>`;
+          : isTimed
+            ? `<span class="badge">${totalSecs?fmtDur(totalSecs):'no time'}</span>`
+            : `<span class="badge">${item.sets.length} sets</span>`;
         card.innerHTML=`
           <div class="ihead"><div class="ttl"><span class="chev">▾</span><b>${escapeHtml(item.name)}</b></div>
             <div class="right">${badge}<button class="delx" data-act="delitem" aria-label="Remove exercise">✕</button></div></div>
           <div class="cardbody"><div class="cardbody-inner">
             <div class="setlist"></div>
-            <button class="addrow" data-act="addset">+ Add set</button>
+            <button class="addrow" data-act="addset">${isTimed?'+ Add interval':'+ Add set'}</button>
           </div></div>`;
         const badgeEl=card.querySelector('.badge');
         const list=card.querySelector('.setlist');
+        const timed = item.kind==='time';
+        // keep the header badge in step with edits (duration typed, set ticked)
+        function refreshBadge(){
+          const allDone = item.sets.length>0 && item.sets.every(x=>x.done);
+          if(allDone){ badgeEl.textContent='✓ Done'; badgeEl.classList.add('ok'); return; }
+          badgeEl.classList.remove('ok');
+          if(timed){ const t=item.sets.reduce((a,x)=>a+(x.secs||0),0); badgeEl.textContent=t?fmtDur(t):'no time'; }
+          else badgeEl.textContent=`${item.sets.length} sets`;
+        }
         item.sets.forEach((s,si)=>{
           const swipe=document.createElement('div'); swipe.className='swipe';
           const delBtn=document.createElement('button'); delBtn.className='swipe-del'; delBtn.type='button'; delBtn.textContent='Delete';
-          const row=document.createElement('div'); row.className='setrow';
-          row.innerHTML=`
-            <div class="si">Set ${si+1}</div>
-            <input type="number" inputmode="decimal" value="${s.kg}" placeholder="kg">
-            <input type="number" inputmode="numeric" value="${s.reps}" placeholder="reps">
-            <div class="check ${s.done?'on':''}">✓</div>`;
-          const [kgI,repsI]=row.querySelectorAll('input');
-          bindNumInput(kgI, ()=>s.kg, v=>s.kg=v);
-          bindNumInput(repsI, ()=>s.reps, v=>s.reps=v);
+          const row=document.createElement('div'); row.className='setrow'+(timed?' timerow':'');
+          if(timed){
+            row.innerHTML=`
+              <div class="si">${item.sets.length>1?`Set ${si+1}`:'Time'}</div>
+              <input type="text" inputmode="numeric" class="durin" value="${s.secs?fmtDur(s.secs):''}" placeholder="mm:ss">
+              <input type="number" inputmode="decimal" step="0.01" value="${s.km||''}" placeholder="km">
+              <div class="check ${s.done?'on':''}">✓</div>`;
+            const [durI,kmI]=row.querySelectorAll('input');
+            // duration is free text (mm:ss) so it gets its own binding, not bindNumInput
+            durI.addEventListener('focus',()=>{ durI.dataset.prev=durI.value; durI.value=''; });
+            durI.addEventListener('blur',()=>{
+              if(durI.value.trim()===''){ durI.value=durI.dataset.prev||''; }
+              s.secs=parseDur(durI.value);
+              durI.value=s.secs?fmtDur(s.secs):'';
+              refreshBadge();
+              saveActive();
+            });
+            bindNumInput(kmI, ()=>s.km||0, v=>s.km=v);
+          } else {
+            row.innerHTML=`
+              <div class="si">Set ${si+1}</div>
+              <input type="number" inputmode="decimal" value="${s.kg}" placeholder="kg">
+              <input type="number" inputmode="numeric" value="${s.reps}" placeholder="reps">
+              <div class="check ${s.done?'on':''}">✓</div>`;
+            const [kgI,repsI]=row.querySelectorAll('input');
+            bindNumInput(kgI, ()=>s.kg, v=>s.kg=v);
+            bindNumInput(repsI, ()=>s.reps, v=>s.reps=v);
+          }
           const chk=row.querySelector('.check');
           chk.addEventListener('click',()=>{
             s.done=!s.done; chk.classList.toggle('on', s.done);
             const allDone = item.sets.length>0 && item.sets.every(x=>x.done);
             item.done=allDone;
             card.classList.toggle('done', allDone);
-            badgeEl.classList.toggle('ok', allDone);
-            badgeEl.textContent = allDone ? '✓ Done' : `${item.sets.length} sets`;
+            refreshBadge();
             if(allDone){ item.collapsed=true; card.classList.add('collapsed'); } // animated auto-minimise
             saveActive();
           });
@@ -1365,7 +1402,9 @@
         });
         card.querySelector('[data-act=addset]').addEventListener('click',()=>{
           const last=item.sets[item.sets.length-1];
-          item.sets.push({kg:last?last.kg:0, reps:last?last.reps:0, done:false});
+          item.sets.push(timed
+            ? {secs:last?last.secs:0, km:last?last.km:0, done:false}
+            : {kg:last?last.kg:0, reps:last?last.reps:0, done:false});
           item.done=false; saveActive();
           renderSessionItems();
         });
@@ -1456,11 +1495,34 @@
     if(cat) m[name.toLowerCase()]=cat; else delete m[name.toLowerCase()];
     save(LS.excat,m);
   }
-  // ---- last-used kg/reps per exercise (global, updated when a workout finishes) ----
+  // ---- last-used values per exercise (global, updated when a workout finishes) ----
   function getExMetaMap(){ const m=load(LS.exmeta,null); return (m&&typeof m==='object')?m:{}; }
   function getExMeta(name){ return getExMetaMap()[name.toLowerCase()]||null; }
-  function setExMeta(name,kg,reps){
-    const m=getExMetaMap(); m[name.toLowerCase()]={kg:Number(kg)||0, reps:Number(reps)||0}; save(LS.exmeta,m);
+  function setExMeta(name,vals){
+    const m=getExMetaMap(); m[name.toLowerCase()]=vals; save(LS.exmeta,m);
+  }
+  // ---- exercise kind: 'reps' (kg × reps) or 'time' (duration + optional km) ----
+  function getExKindMap(){ const m=load(LS.exkind,null); return (m&&typeof m==='object')?m:{}; }
+  function getExKind(name){ return getExKindMap()[name.toLowerCase()]==='time' ? 'time' : 'reps'; }
+  function setExKind(name,kind){
+    const m=getExKindMap();
+    if(kind==='time') m[name.toLowerCase()]='time'; else delete m[name.toLowerCase()];
+    save(LS.exkind,m);
+  }
+  // mm:ss / h:mm:ss / bare minutes -> seconds; '' when unparseable
+  function parseDur(str){
+    const t=String(str).trim(); if(!t) return 0;
+    if(/^\d+$/.test(t)) return Number(t)*60;                 // "20" = 20 min
+    const p=t.split(':').map(x=>Number(x)||0);
+    if(p.length===2) return p[0]*60+p[1];
+    if(p.length===3) return p[0]*3600+p[1]*60+p[2];
+    return 0;
+  }
+  function fmtDur(secs){
+    secs=Math.max(0,Math.round(Number(secs)||0));
+    const h=Math.floor(secs/3600), m=Math.floor(secs%3600/60), s=secs%60;
+    return h ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+             : `${m}:${String(s).padStart(2,'0')}`;
   }
   let pickerCtx=null; // {mode:'exercise'} | {mode:'move', item}
   const pickerOpenCats=new Set(); // which groups are expanded; reset (collapsed) each open
@@ -1473,7 +1535,7 @@
       const matches=cat.filter(n=>n.toLowerCase().includes(q));
       el.innerHTML = matches.length
         ? matches.map(n=>`<div class="pickitem" data-name="${escapeHtml(n)}">
-            <button class="pickrow">${escapeHtml(n)}</button>
+            <button class="pickrow">${escapeHtml(n)}${getExKind(n)==='time'?'<span class="kindtag">time</span>':''}</button>
             <button class="pickdel" aria-label="Delete">🗑</button>
           </div>`).join('')
         : '<div class="empty" style="padding:10px 0">No matches.</div>';
@@ -1494,7 +1556,8 @@
     el.innerHTML=all.map(g=>{
       const open=pickerOpenCats.has(g.key);
       const rows=g.items.map(n=>`<div class="pickitem" data-name="${escapeHtml(n)}">
-          <button class="pickrow">${escapeHtml(n)}</button>
+          <button class="pickrow">${escapeHtml(n)}${getExKind(n)==='time'?'<span class="kindtag">time</span>':''}</button>
+          <button class="pickkind" aria-label="Toggle reps or time" title="Reps or time">${getExKind(n)==='time'?'⏱':'#'}</button>
           <select class="pickcat" aria-label="Category">${catOptions(n)}</select>
           <button class="pickdel" aria-label="Delete">🗑</button>
         </div>`).join('') || '<div class="empty" style="padding:6px 2px;font-size:13px">Empty</div>';
@@ -1522,6 +1585,11 @@
         row.querySelector('.pickrow').addEventListener('click',()=>pickExercise(n));
         row.querySelector('.pickdel').addEventListener('click',()=>{ removeFromCatalog(n); renderPickerList(); toast('Removed from list'); });
         row.querySelector('.pickcat').addEventListener('change',(e)=>{ setExCat(n, e.target.value); renderPickerList(); });
+        row.querySelector('.pickkind').addEventListener('click',()=>{
+          const next = getExKind(n)==='time' ? 'reps' : 'time';
+          setExKind(n, next); renderPickerList();
+          toast(`${n}: ${next==='time'?'duration':'reps'}`);
+        });
       });
     });
   }
@@ -1536,12 +1604,16 @@
   function closePicker(){ $('#exPicker').classList.remove('show'); pickerCtx=null; }
   function pickExercise(name){
     if(!pickerCtx) return;
-    const meta=getExMeta(name); // last-used kg/reps (global)
+    const meta=getExMeta(name)||{};   // last-used values (global)
+    const kind=getExKind(name);
     if(pickerCtx.mode==='move'){
-      pickerCtx.item.moves.push({name, kg:meta?meta.kg:0}); // HIIT = AMRAP, no reps
+      pickerCtx.item.moves.push({name, kg:meta.kg||0}); // HIIT = AMRAP, no reps
     } else {
       if(!activeSession) activeSession=newSession();
-      activeSession.items.push({type:'exercise', name, sets:[{kg:meta?meta.kg:0, reps:meta?meta.reps:0, done:false}], collapsed:false, done:false});
+      const first = kind==='time'
+        ? {secs:meta.secs||0, km:meta.km||0, done:false}
+        : {kg:meta.kg||0, reps:meta.reps||0, done:false};
+      activeSession.items.push({type:'exercise', name, kind, sets:[first], collapsed:false, done:false});
     }
     saveActive();
     closePicker();
@@ -1590,8 +1662,13 @@
     if(!confirm('Finish this workout?')) return;
     activeSession.endedAt=Date.now();
     activeSession.items.forEach(it=>{ // remember last-used kg/reps per exercise
-      if(it.type==='exercise'){ const s=it.sets[it.sets.length-1]; if(s) setExMeta(it.name, s.kg, s.reps); }
-      else it.moves.forEach(m=>setExMeta(m.name, m.kg, 0));
+      if(it.type==='exercise'){
+        const s=it.sets[it.sets.length-1];
+        if(s) setExMeta(it.name, it.kind==='time'
+          ? {secs:Number(s.secs)||0, km:Number(s.km)||0}
+          : {kg:Number(s.kg)||0, reps:Number(s.reps)||0});
+      }
+      else it.moves.forEach(m=>setExMeta(m.name, {kg:Number(m.kg)||0, reps:0}));
     });
     const arr=getSessions(); arr.unshift(activeSession); saveSessions(arr);
     activeSession=null; activeHiitItem=null; saveActive();
@@ -1604,7 +1681,13 @@
     if(s.source==='import') return '<div class="dsub">Imported from another app — day only, no exercise data.</div>';
     return s.items.map(it=>{
       if(it.type==='exercise'){
-        const rows=it.sets.map((st,i)=>`<div class="dsub">Set ${i+1}: ${st.kg||0}kg × ${st.reps||0}${st.done?' ✓':''}</div>`).join('');
+        const rows=it.sets.map((st,i)=>{
+          const body = it.kind==='time'
+            ? `${fmtDur(st.secs||0)}${st.km?` · ${st.km} km`:''}`
+            : `${st.kg||0}kg × ${st.reps||0}`;
+          const label = it.kind==='time' && it.sets.length===1 ? 'Time' : `Set ${i+1}`;
+          return `<div class="dsub">${label}: ${body}${st.done?' ✓':''}</div>`;
+        }).join('');
         return `<div class="ditem"><b>${escapeHtml(it.name)}</b>${rows}</div>`;
       }
       const mv=it.moves.map(m=>escapeHtml(m.name)+(m.kg?` ${m.kg}kg`:'')).join(', ');
