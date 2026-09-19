@@ -116,14 +116,18 @@
   #run::before{ /* soft phase-tinted bloom behind the ring */
     content:"";position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);
     width:min(120vw,620px);aspect-ratio:1;border-radius:50%;pointer-events:none;
-    background:radial-gradient(circle,var(--ph) 0%,transparent 70%);
-    opacity:.2;transition:background .35s ease;
-    animation:bloompulse 2.4s ease-in-out infinite;
+    background:radial-gradient(circle,var(--ph) 0%,transparent 72%);
+    transition:background .35s ease;
+    animation:bloompulse 1.7s cubic-bezier(.36,.7,.2,1) infinite;
   }
-  /* the glow breathes small -> large so the screen never sits still */
+  /* double-beat: hit, partial settle, hit again, then rest */
   @keyframes bloompulse{
-    0%,100%{transform:translate(-50%,-50%) scale(.72);opacity:.12}
-    50%{transform:translate(-50%,-50%) scale(1.1);opacity:.34}
+    0%  {transform:translate(-50%,-50%) scale(.58);opacity:.10}
+    12% {transform:translate(-50%,-50%) scale(1.20);opacity:.62}
+    28% {transform:translate(-50%,-50%) scale(.86);opacity:.30}
+    40% {transform:translate(-50%,-50%) scale(1.14);opacity:.55}
+    70% {transform:translate(-50%,-50%) scale(.72);opacity:.16}
+    100%{transform:translate(-50%,-50%) scale(.58);opacity:.10}
   }
   #run.paused::before{animation-play-state:paused}
   @media (prefers-reduced-motion:reduce){
@@ -167,7 +171,7 @@
   #run.warn .ring .prog,#run.warn .dots i.cur{transition:stroke-dashoffset .12s linear}
   /* bright head riding the leading edge of the arc */
   .ring .comet{
-    fill:#fff;transition:fill .35s ease;
+    stroke:#fff;stroke-linecap:butt;
     filter:drop-shadow(0 0 10px var(--ph));
   }
   #run.paused .ring .comet{opacity:.3}
@@ -604,8 +608,8 @@
       <svg viewBox="0 0 120 120">
         <circle class="track" cx="60" cy="60" r="54" fill="none" stroke-width="10"/>
         <circle class="prog" id="ringProg" cx="60" cy="60" r="54" fill="none" stroke-width="10"/>
-        <line class="halftick" id="ringHalf" x1="60" y1="1" x2="60" y2="14" stroke-width="4"/>
-        <circle class="comet" id="ringComet" r="6"/>
+        <line class="halftick" id="ringHalf" stroke-width="4"/>
+        <line class="comet" id="ringComet" stroke-width="5"/>
       </svg>
       <div class="time" id="runTime">20</div>
       <div class="switch" id="runSwitch" aria-hidden="true">SWITCH</div>
@@ -931,6 +935,17 @@
 
   // ---------- Timer engine ----------
   const RING_R=54, CIRC=2*Math.PI*RING_R;
+  // the <svg> already carries rotate(-90deg), so angles here stay in local space:
+  // local 0deg is the arc's start and renders at 12 o'clock.
+  function ringPoint(frac, r){
+    const a=(360*frac)*Math.PI/180;
+    return [60+r*Math.cos(a), 60+r*Math.sin(a)];
+  }
+  function placeRadial(el, frac, inner, outer){
+    const [x1,y1]=ringPoint(frac, inner), [x2,y2]=ringPoint(frac, outer);
+    el.setAttribute('x1',x1.toFixed(2)); el.setAttribute('y1',y1.toFixed(2));
+    el.setAttribute('x2',x2.toFixed(2)); el.setAttribute('y2',y2.toFixed(2));
+  }
   $('#ringProg').style.strokeDasharray=CIRC;
   const PHASE_COLOR={prepare:'--prepare',work:'--work',rest:'--rest',setrest:'--setrest',cooldown:'--cooldown'};
 
@@ -992,10 +1007,7 @@
     // show the halfway marker only where a switch cue will actually fire
     const showHalf = settings.halfway && p.type==='work' && p.dur>=8;
     $('.ring').classList.toggle('showhalf', showHalf);
-    if(showHalf){
-      // the arc drains clockwise from 12 o'clock, so half-time sits at 6 o'clock
-      $('#ringHalf').setAttribute('transform','rotate(180 60 60)');
-    }
+    if(showHalf) placeRadial($('#ringHalf'), 0.5, RING_R-9, RING_R+9);
     // counts
     const totalRounds=config.rounds, totalSets=config.sets;
     const setEl=$('#runSet'), roundEl=$('#runRound');
@@ -1041,7 +1053,7 @@
     ["The fight is won far from witnesses, long before I dance under those lights.","Muhammad Ali"]
   ];
   function pickQuote(){ return QUOTES[Math.floor(Math.random()*QUOTES.length)]; }
-  const AMBER='#f59e0b', WORK2='#14b8a6';
+  const AMBER='#f59e0b', WORK2='#ef4444';
   // work intervals escalate: phase colour -> teal past halfway -> amber blink in the last 10s
   function escalate(p, sec){
     if(p.type!=='work') return engine.baseColor;
@@ -1072,12 +1084,9 @@
     const p=engine.seq[engine.idx];
     const frac=Math.max(0,Math.min(1, sec/p.dur));
     $('#ringProg').style.strokeDashoffset=CIRC*(1-frac);
-    // comet head rides the end of the remaining arc.
-    // the <svg> already carries rotate(-90deg), so this angle stays in local space.
-    const ang=(360*frac) * Math.PI/180;
+    // comet head rides the end of the remaining arc
     const c=$('#ringComet');
-    c.setAttribute('cx', (60 + RING_R*Math.cos(ang)).toFixed(2));
-    c.setAttribute('cy', (60 + RING_R*Math.sin(ang)).toFixed(2));
+    placeRadial(c, frac, RING_R-10, RING_R+10);
     c.style.opacity = frac>0.002 ? '1' : '0';
     const want=escalate(p, sec);
     if(want && want!==engine.curPh){ engine.curPh=want; $('#run').style.setProperty('--ph', want); }
