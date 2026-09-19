@@ -150,12 +150,16 @@
     font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-top:26px;min-height:16px;opacity:.45;
   }
   #run .totals{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;opacity:.35;text-align:center;margin-bottom:14px;font-variant-numeric:tabular-nums}
-  #run .runctrls{display:flex;gap:8px;align-items:stretch}
+  /* compact square system controls — flat, tight radius, still a big tap target */
+  #run .runctrls{display:flex;gap:2px;align-items:stretch}
   #run .runctrls button{
-    flex:1;border:0;border-radius:14px;padding:17px 0;font-size:17px;font-weight:700;color:var(--text);
-    background:rgba(255,255,255,.07);cursor:pointer;
+    flex:1;border:0;border-radius:4px;padding:20px 0;font-size:17px;font-weight:700;color:var(--text);
+    background:rgba(255,255,255,.07);cursor:pointer;line-height:1;
   }
-  #run .runctrls button:active{transform:scale(.96);background:rgba(255,255,255,.12)}
+  #run .runctrls button:active{background:rgba(255,255,255,.16)}
+  #run .runctrls .nav{font-size:22px;font-weight:900}
+  #run .runctrls .flip{transform:scaleX(-1)}
+  #run .runctrls .flip:active{transform:scaleX(-1)}
   #run .runctrls .wide{flex:2;font-size:15px;letter-spacing:1.5px;text-transform:uppercase;background:var(--ph);color:#06110a}
   #run .runctrls .stop{flex:.7;color:var(--muted)}
   #run.paused .ring .prog{opacity:.35}
@@ -512,9 +516,9 @@
   </div>
   <div class="totals" id="runTotals"></div>
   <div class="runctrls">
-    <button id="prevBtn" aria-label="Previous">⏮</button>
+    <button class="nav flip" id="prevBtn" aria-label="Previous">&gt;</button>
     <button class="wide" id="pauseBtn">Pause</button>
-    <button id="skipBtn" aria-label="Skip">⏭</button>
+    <button class="nav" id="skipBtn" aria-label="Skip">&gt;</button>
     <button class="stop" id="stopBtn" aria-label="Stop">✕</button>
   </div>
 </div>
