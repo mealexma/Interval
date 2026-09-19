@@ -402,7 +402,15 @@
   .chart-card{background:transparent;border:0;border-radius:0;padding:6px 0 10px;margin-bottom:14px}
   /* ---- effort per workout (log tab) ---- */
   .effhead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:12px}
-  .effsum{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;text-align:right}
+  .effsum{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;margin-bottom:10px}
+  .effmode{display:flex;gap:2px;flex:none}
+  .effmode button{background:var(--panel2);border:0;color:var(--muted);border-radius:0;
+    padding:7px 13px;font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;cursor:pointer}
+  .effmode button.active{background:var(--accent);color:#04210f}
+  .eff-line{fill:none;stroke:var(--accent);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:butt}
+  .eff-area{fill:var(--accent);opacity:.13}
+  .eff-dot{fill:var(--accent)}
+  .eff-last{fill:#fff;stroke:var(--accent);stroke-width:2.5}
   .effsum b{color:var(--text);font-weight:800}
   .effortchart{margin-bottom:10px}
   .effortchart svg{width:100%;height:150px;display:block;overflow:visible}
@@ -556,9 +564,13 @@
     <!-- ===== LOG ===== -->
     <section id="log" class="view">
       <div class="effhead">
-        <h2 class="sectiontitle" style="margin:0">Effort per workout</h2>
-        <span class="effsum" id="effortSummary"></span>
+        <h2 class="sectiontitle" style="margin:0">HIIT effort</h2>
+        <div class="effmode" id="effortMode">
+          <button data-m="line" class="active">Line</button>
+          <button data-m="bars">Bars</button>
+        </div>
       </div>
+      <div class="effsum" id="effortSummary"></div>
       <div class="effortchart">
         <svg id="effortSvg" viewBox="0 0 320 150" preserveAspectRatio="none" role="img" aria-label="Effort per workout"></svg>
         <div class="effaxis" id="effortAxis"></div>
@@ -570,9 +582,8 @@
         <button data-n="all">All</button>
       </div>
       <div class="efflegend">
-        <span><i class="k-hiit"></i>HIIT runs</span>
-        <span><i class="k-sets"></i>Sets</span>
-        <span class="effavg-key"><i class="k-avg"></i>Average</span>
+        <span><i class="k-hiit"></i>HIIT runs per session</span>
+        <span><i class="k-avg"></i>Average</span>
       </div>
 
       <h2 class="sectiontitle" style="margin-top:26px">Sessions</h2>
@@ -1969,73 +1980,79 @@
       return `<div class="ditem"><b>${escapeHtml(it.name)}</b><div class="dsub">HIIT · ran ${it.runs||0}×${mv?' · '+mv:''}</div></div>`;
     }).join('') || '<div class="dsub">No exercises logged.</div>';
   }
-  // ---------- Effort per workout ----------
-  // one bar per session, stacked: HIIT runs above strength sets. Both are
-  // "things you actually did", so they share one scale.
+  // ---------- HIIT effort trend ----------
+  // only sessions that actually ran a HIIT block; Y is that session's run count.
   let effortRange='12';
-  function sessionEffort(s){
-    let runs=0, sets=0;
-    s.items.forEach(it=>{
-      if(it.type==='hiit') runs+=it.runs||0;
-      else sets+=it.sets.length;
-    });
-    return {runs, sets, total:runs+sets};
+  let effortMode = (load(LS.settings,{}).effortChart==='bars') ? 'bars' : 'line';
+  function hiitRuns(s){
+    let n=0; s.items.forEach(it=>{ if(it.type==='hiit') n+=it.runs||0; });
+    return n;
   }
   function renderEffortChart(){
     const svg=$('#effortSvg'); if(!svg) return;
-    const all=getSessions().filter(s=>!(s.source==='import'&&!s.items.length))
-                           .slice().sort((a,b)=>a.startedAt-b.startedAt);
-    const n = effortRange==='all' ? all.length : parseInt(effortRange,10);
-    const data=all.slice(-n).map(s=>Object.assign({s}, sessionEffort(s)));
+    const data=getSessions()
+      .filter(s=>hiitRuns(s)>0)
+      .sort((a,b)=>a.startedAt-b.startedAt)
+      .map(s=>({s, runs:hiitRuns(s)}));
+    const n = effortRange==='all' ? data.length : parseInt(effortRange,10);
+    const pts=data.slice(-n);
     const axis=$('#effortAxis'), sum=$('#effortSummary');
+    $$('#effortMode button').forEach(b=>b.classList.toggle('active', b.dataset.m===effortMode));
 
-    if(!data.length){
-      svg.innerHTML='';
-      axis.textContent='';
-      sum.textContent='';
-      svg.insertAdjacentHTML('beforeend',
-        '<text x="160" y="78" text-anchor="middle" class="eff-ylab" style="font-size:11px">No workouts logged yet</text>');
+    if(!pts.length){
+      svg.innerHTML='<text x="160" y="78" text-anchor="middle" class="eff-ylab" style="font-size:11px">No HIIT sessions logged yet</text>';
+      axis.textContent=''; sum.textContent='';
       return;
     }
 
-    const W=320,H=150, padL=22,padR=4,padT=10,padB=2;
+    const W=320,H=150, padL=22,padR=6,padT=12,padB=2;
     const plotW=W-padL-padR, plotH=H-padT-padB;
-    const max=Math.max(...data.map(d=>d.total));
-    const top=Math.max(1, Math.ceil(max/5)*5);          // round the scale up to a clean 5
+    const max=Math.max(...pts.map(d=>d.runs));
+    const top=Math.max(1, Math.ceil(max/5)*5);
     const y=v=>padT+plotH*(1-v/top);
-    const step=plotW/data.length;
-    const bw=Math.max(2, Math.min(26, step*0.68));
-    const avg=data.reduce((a,d)=>a+d.total,0)/data.length;
+    const step=plotW/pts.length;
+    const cx=i=>padL+step*i+step/2;
+    const avg=pts.reduce((a,d)=>a+d.runs,0)/pts.length;
 
     let g='';
-    // gridlines + y labels at 0, half, top — every label names a value the scale reaches
     [0, top/2, top].forEach(v=>{
       g+=`<line class="eff-grid" x1="${padL}" y1="${y(v).toFixed(1)}" x2="${W-padR}" y2="${y(v).toFixed(1)}"/>`;
       g+=`<text class="eff-ylab" x="${padL-5}" y="${(y(v)+3).toFixed(1)}" text-anchor="end">${v}</text>`;
     });
-    data.forEach((d,i)=>{
-      const cx=padL+step*i+step/2, x=cx-bw/2;
-      const hSets=(d.sets/top)*plotH, hRuns=(d.runs/top)*plotH;
-      const yTop=y(d.total);
-      if(d.runs) g+=`<rect class="bar-hiit" x="${x.toFixed(1)}" y="${yTop.toFixed(1)}" width="${bw.toFixed(1)}" height="${hRuns.toFixed(1)}"/>`;
-      if(d.sets) g+=`<rect class="bar-sets" x="${x.toFixed(1)}" y="${(yTop+hRuns).toFixed(1)}" width="${bw.toFixed(1)}" height="${hSets.toFixed(1)}"/>`;
-      // full-height invisible hit area so thin bars are still tappable
-      g+=`<rect class="bar-hit" x="${(cx-step/2).toFixed(1)}" y="${padT}" width="${step.toFixed(1)}" height="${plotH}" data-i="${i}"/>`;
-    });
+
+    if(effortMode==='bars'){
+      const bw=Math.max(2, Math.min(26, step*0.68));
+      pts.forEach((d,i)=>{
+        const h=(d.runs/top)*plotH;
+        g+=`<rect class="bar-hiit" x="${(cx(i)-bw/2).toFixed(1)}" y="${y(d.runs).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}"/>`;
+      });
+    } else {
+      const line=pts.map((d,i)=>`${cx(i).toFixed(1)},${y(d.runs).toFixed(1)}`).join(' ');
+      // area first so the stroke sits on top of it
+      g+=`<polygon class="eff-area" points="${cx(0).toFixed(1)},${y(0).toFixed(1)} ${line} ${cx(pts.length-1).toFixed(1)},${y(0).toFixed(1)}"/>`;
+      g+=`<polyline class="eff-line" points="${line}"/>`;
+      if(pts.length<=30) pts.forEach((d,i)=>{
+        g+=`<circle class="eff-dot" cx="${cx(i).toFixed(1)}" cy="${y(d.runs).toFixed(1)}" r="3"/>`;
+      });
+      const last=pts[pts.length-1];
+      g+=`<circle class="eff-last" cx="${cx(pts.length-1).toFixed(1)}" cy="${y(last.runs).toFixed(1)}" r="4.5"/>`;
+    }
+
     g+=`<line class="eff-avg" x1="${padL}" y1="${y(avg).toFixed(1)}" x2="${W-padR}" y2="${y(avg).toFixed(1)}"/>`;
+    // invisible full-height columns keep every point tappable
+    pts.forEach((d,i)=>{
+      g+=`<rect class="bar-hit" x="${(cx(i)-step/2).toFixed(1)}" y="${padT}" width="${step.toFixed(1)}" height="${plotH}" data-i="${i}"/>`;
+    });
     svg.innerHTML=g;
 
     const fmt=t=>{ const d=new Date(t); return `${d.getDate()} ${MON_NAMES[d.getMonth()]}`; };
-    axis.innerHTML=`<span>${fmt(data[0].s.startedAt)}</span><span>${fmt(data[data.length-1].s.startedAt)}</span>`;
-    sum.innerHTML=`<b>${data.length}</b> workouts · avg <b>${avg.toFixed(1)}</b>`;
+    axis.innerHTML=`<span>${fmt(pts[0].s.startedAt)}</span><span>${fmt(pts[pts.length-1].s.startedAt)}</span>`;
+    sum.innerHTML=`<b>${pts.length}</b> HIIT session${pts.length===1?'':'s'} · avg <b>${avg.toFixed(1)}</b> runs · best <b>${max}</b>`;
 
     svg.querySelectorAll('.bar-hit').forEach(r=>{
       r.addEventListener('click',()=>{
-        const d=data[+r.dataset.i];
-        const bits=[];
-        if(d.runs) bits.push(`${d.runs} HIIT run${d.runs===1?'':'s'}`);
-        if(d.sets) bits.push(`${d.sets} set${d.sets===1?'':'s'}`);
-        toast(`${fmt(d.s.startedAt)} · ${bits.join(' · ')||'no activity'}`);
+        const d=pts[+r.dataset.i];
+        toast(`${fmt(d.s.startedAt)} · ${d.runs} HIIT run${d.runs===1?'':'s'}`);
       });
     });
   }
@@ -2043,6 +2060,13 @@
     b.addEventListener('click',()=>{
       effortRange=b.dataset.n;
       $$('#effortRange button').forEach(x=>x.classList.toggle('active', x===b));
+      renderEffortChart();
+    });
+  });
+  $$('#effortMode button').forEach(b=>{
+    b.addEventListener('click',()=>{
+      effortMode=b.dataset.m;
+      settings.effortChart=effortMode; save(LS.settings, settings);   // remember the choice
       renderEffortChart();
     });
   });
