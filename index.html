@@ -118,6 +118,18 @@
     width:min(120vw,620px);aspect-ratio:1;border-radius:50%;pointer-events:none;
     background:radial-gradient(circle,color-mix(in srgb,var(--ph) 26%,transparent) 0%,transparent 68%);
     transition:background .35s ease;
+    animation:bloompulse 2.6s ease-in-out infinite;
+  }
+  /* the glow breathes small -> large so the screen never sits still */
+  @keyframes bloompulse{
+    0%,100%{transform:translate(-50%,-50%) scale(.82);opacity:.55}
+    50%{transform:translate(-50%,-50%) scale(1.06);opacity:1}
+  }
+  #run.paused::before{animation-play-state:paused}
+  @media (prefers-reduced-motion:reduce){
+    #run::before{animation:none}
+    #run .phase.slam,#run .switch.go,#run .ring.snap .prog{animation:none}
+    #run .switch.go{opacity:0}
   }
   #run>*{position:relative;z-index:1}
   #run .topline{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
@@ -135,6 +147,15 @@
     font-size:13px;font-weight:800;letter-spacing:5px;text-transform:uppercase;
     margin-bottom:22px;color:var(--ph);transition:color .35s ease;
   }
+  /* phase-change slam: the label drives in hard, the ring snaps round */
+  #run .phase.slam{animation:slam .42s cubic-bezier(.16,1.1,.3,1)}
+  @keyframes slam{
+    0%{transform:scale(1.5);letter-spacing:15px;opacity:0}
+    55%{opacity:1}
+    100%{transform:scale(1);letter-spacing:5px;opacity:1}
+  }
+  #run .ring.snap .prog{animation:ringsnap .5s cubic-bezier(.16,1,.3,1)}
+  @keyframes ringsnap{from{opacity:.25;stroke-dashoffset:339}to{opacity:1}}
   .ring{position:relative;width:min(76vw,320px);height:min(76vw,320px)}
   .ring svg{transform:rotate(-90deg);width:100%;height:100%;overflow:visible}
   .ring .track{stroke:rgba(255,255,255,.09)}
@@ -142,6 +163,29 @@
     stroke:var(--ph);stroke-linecap:round;transition:stroke-dashoffset .12s linear,stroke .35s ease;
     filter:drop-shadow(0 0 7px color-mix(in srgb,var(--ph) 65%,transparent));
   }
+  /* bright head riding the leading edge of the arc */
+  .ring .comet{
+    fill:#fff;transition:fill .35s ease;
+    filter:drop-shadow(0 0 9px color-mix(in srgb,var(--ph) 90%,transparent));
+  }
+  #run.paused .ring .comet{opacity:.3}
+  .ring .halftick{stroke:rgba(255,255,255,.55);opacity:0;transition:opacity .25s ease}
+  .ring.showhalf .halftick{opacity:1}
+  /* halfway: switch hands / direction */
+  #run .switch{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    font-size:clamp(26px,9vw,42px);font-weight:900;letter-spacing:3px;
+    color:var(--ph);opacity:0;pointer-events:none;white-space:nowrap;
+  }
+  #run .switch.go{animation:switchflash 1.5s ease-out}
+  @keyframes switchflash{
+    0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}
+    14%{opacity:1;transform:translate(-50%,-50%) scale(1.06)}
+    24%{transform:translate(-50%,-50%) scale(1)}
+    72%{opacity:1}
+    100%{opacity:0;transform:translate(-50%,-50%) scale(1)}
+  }
+  #run .ring.switching .time{opacity:.12}
   .ring .time{
     position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
     font-size:clamp(64px,24vw,116px);font-weight:800;font-variant-numeric:tabular-nums;
@@ -521,8 +565,11 @@
       <svg viewBox="0 0 120 120">
         <circle class="track" cx="60" cy="60" r="54" fill="none" stroke-width="4"/>
         <circle class="prog" id="ringProg" cx="60" cy="60" r="54" fill="none" stroke-width="4"/>
+        <line class="halftick" id="ringHalf" x1="60" y1="2" x2="60" y2="12" stroke-width="3"/>
+        <circle class="comet" id="ringComet" r="5"/>
       </svg>
       <div class="time" id="runTime">20</div>
+      <div class="switch" id="runSwitch" aria-hidden="true">SWITCH</div>
     </div>
     <div class="next" id="runNext"></div>
   </div>
@@ -611,6 +658,10 @@
       <div class="lbl">Voice cues <small>say “Work” / “Rest” aloud</small></div>
       <div class="sw" data-set="voice"></div>
     </div>
+    <div class="toggle">
+      <div class="lbl">Halfway cue <small>signal to switch hands or direction</small></div>
+      <div class="sw" data-set="halfway"></div>
+    </div>
     <button class="done-btn" id="settingsClose">Close</button>
     <p class="credit">Interval · 100% offline · data stays on this device</p>
   </div>
@@ -695,7 +746,7 @@
   ];
   let userPresets = load(LS.presets, []);
 
-  let settings = Object.assign({sound:true, vibrate:true, wakelock:true, voice:false}, load(LS.settings,{}));
+  let settings = Object.assign({sound:true, vibrate:true, wakelock:true, voice:false, halfway:true}, load(LS.settings,{}));
 
   // ---------- Setup UI ----------
   function fmtVal(k){
@@ -821,6 +872,7 @@
     }
   }
   function tick(){ beep(760,0.09,0,0.5,'sine'); vibe([35]); }
+  function halfCue(){ beep(990,0.1,0,0.5,'triangle'); beep(990,0.1,0.15,0.5,'triangle'); vibe([70,70,70]); speak('Switch'); }
   function vibe(pattern){ if(settings.vibrate && navigator.vibrate){ try{navigator.vibrate(pattern);}catch(e){} } }
   function speak(text){
     if(!settings.voice || !('speechSynthesis' in window)) return;
@@ -878,6 +930,7 @@
     engine.phaseEndsAt=performance.now()+p.dur*1000;
     engine.remainingMs=p.dur*1000;
     engine.lastWhole=p.dur;
+    engine.halfFired=false;
     cueFor(p.type);
     paintPhase();
     paintTime(p.dur);
@@ -888,7 +941,20 @@
     const color=getComputedStyle(document.documentElement).getPropertyValue(PHASE_COLOR[p.type]||'--work').trim();
     const run=$('#run');
     run.style.setProperty('--ph', color);   // accent only; the shell stays dark
-    $('#runPhase').textContent=p.label;
+    const phEl=$('#runPhase');
+    if(phEl.textContent!==p.label){        // slam only on an actual phase change
+      phEl.textContent=p.label;
+      phEl.classList.remove('slam'); void phEl.offsetWidth; phEl.classList.add('slam');
+      const ring=$('.ring');
+      ring.classList.remove('snap'); void ring.offsetWidth; ring.classList.add('snap');
+    }
+    // show the halfway marker only where a switch cue will actually fire
+    const showHalf = settings.halfway && p.type==='work' && p.dur>=8;
+    $('.ring').classList.toggle('showhalf', showHalf);
+    if(showHalf){
+      // the arc drains clockwise from 12 o'clock, so half-time sits at 6 o'clock
+      $('#ringHalf').setAttribute('transform','rotate(180 60 60)');
+    }
     // counts
     const totalRounds=config.rounds, totalSets=config.sets;
     const setEl=$('#runSet'), roundEl=$('#runRound');
@@ -934,6 +1000,13 @@
     ["The fight is won far from witnesses, long before I dance under those lights.","Muhammad Ali"]
   ];
   function pickQuote(){ return QUOTES[Math.floor(Math.random()*QUOTES.length)]; }
+  function flashSwitch(){
+    const el=$('#runSwitch'), ring=$('.ring');
+    el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
+    ring.classList.add('switching');
+    clearTimeout(flashSwitch._t);
+    flashSwitch._t=setTimeout(()=>ring.classList.remove('switching'), 1500);
+  }
   function paintTime(sec){
     const whole=Math.ceil(sec);
     const el=$('#runTime');
@@ -947,6 +1020,12 @@
     const p=engine.seq[engine.idx];
     const frac=Math.max(0,Math.min(1, sec/p.dur));
     $('#ringProg').style.strokeDashoffset=CIRC*(1-frac);
+    // comet head rides the end of the remaining arc
+    const ang=(-90 + 360*frac) * Math.PI/180;
+    const c=$('#ringComet');
+    c.setAttribute('cx', (60 + RING_R*Math.cos(ang)).toFixed(2));
+    c.setAttribute('cy', (60 + RING_R*Math.sin(ang)).toFixed(2));
+    c.style.opacity = frac>0.002 ? '1' : '0';
     // totals
     const elapsed=(Date.now()-engine.startedAt)/1000;
     const totalAll=engine.seq.reduce((a,x)=>a+x.dur,0);
@@ -966,6 +1045,13 @@
     if(whole!==engine.lastWhole){
       engine.lastWhole=whole;
       if(whole>=1 && whole<=3) tick();
+    }
+    // halfway through a work interval: switch hands / direction
+    const cur=engine.seq[engine.idx];
+    if(settings.halfway && !engine.halfFired && cur.type==='work' && cur.dur>=8 && remSec<=cur.dur/2){
+      engine.halfFired=true;
+      halfCue();
+      flashSwitch();
     }
     if(remMs<=0){
       // record work time for finished phase
