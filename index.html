@@ -110,28 +110,62 @@
     transition:background .35s ease;color:#fff;
   }
   #run.show{display:flex}
-  #run .topline{display:flex;justify-content:space-between;align-items:center;font-weight:600;font-size:15px;opacity:.95}
-  #run .topline .pill{background:rgba(0,0,0,.28);padding:5px 12px;border-radius:999px;font-variant-numeric:tabular-nums}
+  /* phase colour is an accent on the dark shell (--ph), not a full-screen flood */
+  #run{--ph:var(--work);background:var(--bg)}
+  #run::before{ /* soft phase-tinted bloom behind the ring */
+    content:"";position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);
+    width:min(120vw,620px);aspect-ratio:1;border-radius:50%;pointer-events:none;
+    background:radial-gradient(circle,color-mix(in srgb,var(--ph) 26%,transparent) 0%,transparent 68%);
+    transition:background .35s ease;
+  }
+  #run>*{position:relative;z-index:1}
+  #run .topline{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+  #run .metric{display:flex;flex-direction:column;line-height:1.1;min-width:52px}
+  #run .metric.right{align-items:flex-end}
+  #run .metric b{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.3px}
+  #run .metric small{font-size:9px;letter-spacing:1.4px;text-transform:uppercase;opacity:.5;margin-top:3px}
+  /* one bar per round — fills as you go */
+  #run .dots{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;align-content:flex-start;flex:1;padding-top:7px;max-height:34px;overflow:hidden}
+  #run .dots i{width:14px;height:4px;border-radius:2px;background:rgba(255,255,255,.16);transition:background .25s ease,box-shadow .25s ease}
+  #run .dots i.on{background:rgba(255,255,255,.5)}
+  #run .dots i.cur{background:var(--ph);box-shadow:0 0 8px color-mix(in srgb,var(--ph) 70%,transparent)}
   #run .center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
-  #run .phase{font-size:30px;font-weight:800;letter-spacing:3px;text-transform:uppercase;margin-bottom:6px;text-shadow:0 2px 12px rgba(0,0,0,.25)}
-  .ring{position:relative;width:min(74vw,300px);height:min(74vw,300px);margin:6px 0}
-  .ring svg{transform:rotate(-90deg);width:100%;height:100%}
-  .ring .track{stroke:rgba(255,255,255,.18)}
-  .ring .prog{stroke:#fff;stroke-linecap:round;transition:stroke-dashoffset .12s linear}
+  #run .phase{
+    font-size:13px;font-weight:800;letter-spacing:5px;text-transform:uppercase;
+    margin-bottom:22px;color:var(--ph);transition:color .35s ease;
+  }
+  .ring{position:relative;width:min(76vw,320px);height:min(76vw,320px)}
+  .ring svg{transform:rotate(-90deg);width:100%;height:100%;overflow:visible}
+  .ring .track{stroke:rgba(255,255,255,.09)}
+  .ring .prog{
+    stroke:var(--ph);stroke-linecap:round;transition:stroke-dashoffset .12s linear,stroke .35s ease;
+    filter:drop-shadow(0 0 7px color-mix(in srgb,var(--ph) 65%,transparent));
+  }
   .ring .time{
     position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-    font-size:clamp(56px,21vw,92px);font-weight:800;font-variant-numeric:tabular-nums;text-shadow:0 2px 16px rgba(0,0,0,.25)
+    font-size:clamp(64px,24vw,116px);font-weight:800;font-variant-numeric:tabular-nums;
+    letter-spacing:-4px;color:var(--text);
   }
-  #run .next{opacity:.9;font-size:15px;margin-top:8px;min-height:20px}
-  #run .totals{opacity:.85;font-size:13px;margin-top:4px;font-variant-numeric:tabular-nums}
-  #run .runctrls{display:flex;gap:12px;align-items:stretch;margin-top:8px}
+  #run .next{
+    font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-top:26px;min-height:16px;opacity:.45;
+  }
+  #run .totals{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;opacity:.35;text-align:center;margin-bottom:14px;font-variant-numeric:tabular-nums}
+  #run .runctrls{display:flex;gap:8px;align-items:stretch}
   #run .runctrls button{
-    flex:1;border:0;border-radius:14px;padding:16px 0;font-size:16px;font-weight:700;color:#fff;
-    background:rgba(0,0,0,.26);cursor:pointer;backdrop-filter:blur(2px);
+    flex:1;border:0;border-radius:14px;padding:17px 0;font-size:17px;font-weight:700;color:var(--text);
+    background:rgba(255,255,255,.07);cursor:pointer;
   }
-  #run .runctrls button:active{transform:scale(.96)}
-  #run .runctrls .wide{flex:1.4}
-  #run .runctrls .stop{background:rgba(0,0,0,.4)}
+  #run .runctrls button:active{transform:scale(.96);background:rgba(255,255,255,.12)}
+  #run .runctrls .wide{flex:2;font-size:15px;letter-spacing:1.5px;text-transform:uppercase;background:var(--ph);color:#06110a}
+  #run .runctrls .stop{flex:.7;color:var(--muted)}
+  #run.paused .ring .prog{opacity:.35}
+  #run.paused .ring .time{opacity:.5}
+  .ring .time.tick{animation:tickpulse .45s ease-out}
+  @keyframes tickpulse{
+    0%{transform:scale(1.11);color:var(--ph)}
+    100%{transform:scale(1);color:var(--text)}
+  }
+  @media (prefers-reduced-motion:reduce){ .ring .time.tick{animation:none} }
 
   /* ---- Done overlay ---- */
   #done{position:fixed;inset:0;z-index:60;display:none;flex-direction:column;align-items:center;justify-content:center;
@@ -461,26 +495,27 @@
 <!-- ===== RUN ===== -->
 <div id="run">
   <div class="topline">
-    <span class="pill" id="runSet">Set 1/1</span>
-    <span class="pill" id="runRound">Round 1/8</span>
+    <span class="metric" id="runSet"><b>1/1</b><small>set</small></span>
+    <div class="dots" id="runDots"></div>
+    <span class="metric right" id="runRound"><b>1/8</b><small>round</small></span>
   </div>
   <div class="center">
     <div class="phase" id="runPhase">Work</div>
     <div class="ring">
       <svg viewBox="0 0 120 120">
-        <circle class="track" cx="60" cy="60" r="54" fill="none" stroke-width="9"/>
-        <circle class="prog" id="ringProg" cx="60" cy="60" r="54" fill="none" stroke-width="9"/>
+        <circle class="track" cx="60" cy="60" r="54" fill="none" stroke-width="4"/>
+        <circle class="prog" id="ringProg" cx="60" cy="60" r="54" fill="none" stroke-width="4"/>
       </svg>
       <div class="time" id="runTime">20</div>
     </div>
     <div class="next" id="runNext"></div>
-    <div class="totals" id="runTotals"></div>
   </div>
+  <div class="totals" id="runTotals"></div>
   <div class="runctrls">
-    <button id="prevBtn">⏮</button>
-    <button class="wide" id="pauseBtn">⏸ Pause</button>
-    <button id="skipBtn">⏭</button>
-    <button class="stop" id="stopBtn">⏹</button>
+    <button id="prevBtn" aria-label="Previous">⏮</button>
+    <button class="wide" id="pauseBtn">Pause</button>
+    <button id="skipBtn" aria-label="Skip">⏭</button>
+    <button class="stop" id="stopBtn" aria-label="Stop">✕</button>
   </div>
 </div>
 
@@ -835,28 +870,38 @@
     const p=engine.seq[engine.idx];
     const color=getComputedStyle(document.documentElement).getPropertyValue(PHASE_COLOR[p.type]||'--work').trim();
     const run=$('#run');
-    run.style.background=mix(color);
+    run.style.setProperty('--ph', color);   // accent only; the shell stays dark
     $('#runPhase').textContent=p.label;
-    $('#ringProg').style.stroke='#fff';
     // counts
     const totalRounds=config.rounds, totalSets=config.sets;
-    if(p.set){ $('#runSet').textContent=`Set ${p.set}/${totalSets}`; $('#runSet').style.visibility=totalSets>1?'visible':'hidden'; }
-    else { $('#runSet').style.visibility='hidden'; }
-    if(p.round){ $('#runRound').textContent=`Round ${p.round}/${totalRounds}`; $('#runRound').style.visibility='visible'; }
-    else { $('#runRound').textContent=p.label; $('#runRound').style.visibility='hidden'; }
+    const setEl=$('#runSet'), roundEl=$('#runRound');
+    if(p.set && totalSets>1){ setEl.querySelector('b').textContent=`${p.set}/${totalSets}`; setEl.style.visibility='visible'; }
+    else setEl.style.visibility='hidden';
+    if(p.round){ roundEl.querySelector('b').textContent=`${p.round}/${totalRounds}`; roundEl.style.visibility='visible'; }
+    else roundEl.style.visibility='hidden';
+    // one bar per round, filled up to the current one
+    const dots=$('#runDots');
+    if(dots.childElementCount!==totalRounds){
+      dots.innerHTML=Array.from({length:totalRounds},()=>'<i></i>').join('');
+    }
+    [...dots.children].forEach((el,i)=>{
+      const n=i+1;
+      el.className = p.round===n ? 'cur' : (p.round && n<p.round ? 'on' : '');
+    });
     // next-up
     const nxt=engine.seq[engine.idx+1];
-    $('#runNext').textContent = nxt ? `Next: ${nxt.label} · ${nxt.dur}s` : 'Next: Finish 🏁';
-  }
-  function mix(hex){
-    // darken the phase color a touch for a deep background
-    const c=hex.replace('#','');
-    const r=parseInt(c.substr(0,2),16),g=parseInt(c.substr(2,2),16),b=parseInt(c.substr(4,2),16);
-    const f=0.72;
-    return `rgb(${Math.round(r*f)},${Math.round(g*f)},${Math.round(b*f)})`;
+    $('#runNext').textContent = nxt ? `Next · ${nxt.label} · ${nxt.dur}s` : 'Next · Finish';
   }
   function paintTime(sec){
-    $('#runTime').textContent=Math.ceil(sec);
+    const whole=Math.ceil(sec);
+    const el=$('#runTime');
+    if(el.textContent!==String(whole)){
+      el.textContent=whole;
+      // pulse the number on each of the last three ticks
+      if(whole<=3 && whole>0 && !engine.paused){
+        el.classList.remove('tick'); void el.offsetWidth; el.classList.add('tick');
+      }
+    }
     const p=engine.seq[engine.idx];
     const frac=Math.max(0,Math.min(1, sec/p.dur));
     $('#ringProg').style.strokeDashoffset=CIRC*(1-frac);
@@ -898,13 +943,15 @@
   function pause(){
     engine.paused=true;
     engine.remainingMs=engine.phaseEndsAt-performance.now();
-    $('#pauseBtn').innerHTML='▶ Resume';
+    $('#pauseBtn').textContent='Resume';
+    $('#run').classList.add('paused');
     releaseWake();
   }
   function resume(){
     engine.paused=false;
     engine.phaseEndsAt=performance.now()+engine.remainingMs;
-    $('#pauseBtn').innerHTML='⏸ Pause';
+    $('#pauseBtn').textContent='Pause';
+    $('#run').classList.remove('paused');
     acquireWake();
   }
   $('#pauseBtn').addEventListener('click',()=>{ engine.paused?resume():pause(); });
@@ -912,11 +959,11 @@
     const p=engine.seq[engine.idx];
     if(p.type==='work'){ engine.workMs+=Math.max(0,p.dur*1000-(engine.paused?engine.remainingMs:engine.phaseEndsAt-performance.now())); }
     if(engine.idx+1>=engine.seq.length){ finish(true); return; }
-    engine.paused=false; $('#pauseBtn').innerHTML='⏸ Pause';
+    engine.paused=false; $('#pauseBtn').textContent='Pause'; $('#run').classList.remove('paused');
     enterPhase(engine.idx+1);
   });
   $('#prevBtn').addEventListener('click',()=>{
-    engine.paused=false; $('#pauseBtn').innerHTML='⏸ Pause';
+    engine.paused=false; $('#pauseBtn').textContent='Pause'; $('#run').classList.remove('paused');
     enterPhase(Math.max(0,engine.idx-1));
   });
   $('#stopBtn').addEventListener('click',()=>{
