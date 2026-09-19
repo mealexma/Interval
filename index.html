@@ -277,19 +277,20 @@
   .pickrow{flex:1;text-align:left;background:var(--panel2);border:0;color:var(--text);border-radius:0;padding:14px;font-size:15px;cursor:pointer;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .pickrow:active{transform:scale(.98)}
   .pickcat{flex:none;width:96px;background:var(--panel2);border:0;color:var(--muted);border-radius:0;font-size:12px;padding:0 6px;cursor:pointer}
-  .pickkind{flex:none;width:38px;background:var(--panel2);border:0;color:var(--muted);border-radius:0;font-size:14px;cursor:pointer}
+  .pickkind{flex:none;width:44px;min-height:46px;background:var(--panel2);border:0;color:var(--muted);border-radius:0;font-size:15px;cursor:pointer}
   .pickkind:active{transform:scale(.94);color:var(--accent)}
   .kindtag{margin-left:8px;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--accent)}
-  .pickdel{flex:none;width:46px;background:transparent;border:0;color:var(--muted);border-radius:0;font-size:15px;cursor:pointer}
+  .pickdel{flex:none;width:46px;min-height:46px;background:transparent;border:0;color:var(--muted);border-radius:0;font-size:15px;cursor:pointer}
   .pickdel:active{transform:scale(.94);color:var(--danger)}
   /* category groups in the picker — collapsed by default */
   .pickgroup{border:0;border-radius:0;margin-bottom:4px;overflow:hidden}
-  .pickgrouphd{display:flex;align-items:center;gap:8px;padding:10px 4px;cursor:pointer;background:transparent;-webkit-user-select:none;user-select:none}
+  .pickgrouphd{display:flex;align-items:center;gap:8px;padding:13px 4px;min-height:48px;cursor:pointer;background:transparent;-webkit-user-select:none;user-select:none}
   .pickgrouphd b{font-size:14px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .pickgrouphd .chev{color:var(--muted);font-size:11px;transition:transform .18s ease}
   .pickgroup:not(.open) .pickgrouphd .chev{transform:rotate(-90deg)}
   .pickgrouphd .gcount{font-size:11px;color:var(--muted);padding:2px 4px;}
-  .catedit{flex:none;width:30px;height:30px;border-radius:0;border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:13px}
+  .catedit{flex:none;width:34px;height:34px;border-radius:0;border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:13px;position:relative}
+  .catedit::after{content:"";position:absolute;inset:-6px}
   .pickgroupbody{display:none;padding:10px 10px 2px}
   .pickgroup.open .pickgroupbody{display:block}
 
@@ -376,7 +377,8 @@
   .itemcard.collapsed .cardbody{grid-template-rows:0fr}
   .itemcard.collapsed .cardbody-inner{opacity:0}
   .itemcard .ihead .right{display:flex;align-items:center;gap:8px;flex:none}
-  .delx{width:26px;height:26px;border-radius:0;border:0;background:transparent;color:var(--muted);display:grid;place-items:center;font-size:15px;cursor:pointer;flex:none;padding:0;line-height:1}
+  .delx{width:26px;height:26px;border-radius:0;border:0;background:transparent;color:var(--muted);display:grid;place-items:center;font-size:15px;cursor:pointer;flex:none;padding:0;line-height:1;position:relative}
+  .delx::after{content:"";position:absolute;inset:-8px -9px}
   .delx:active{transform:scale(.9);color:var(--danger);border-color:var(--danger)}
   .itemcard.done .ihead b{color:var(--muted);text-decoration:line-through}
   .itemcard .ihead b{font-size:18px;font-weight:800;letter-spacing:-.3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -399,22 +401,24 @@
   .check{
     width:30px;height:30px;border-radius:0;border:0;background:var(--panel2);
     display:grid;place-items:center;cursor:pointer;color:transparent;font-size:15px;
+    position:relative;
   }
+  .check::after{content:"";position:absolute;inset:-7px -8px}
   .check.on{background:var(--accent);border-color:var(--accent);color:#04210f}
   .check:active{transform:scale(.92)}
   .addrow{
     width:100%;background:transparent;border:0;color:var(--muted);
-    border-radius:0;padding:9px;font-size:13px;cursor:pointer;margin-top:2px;
+    border-radius:0;padding:14px 9px;min-height:46px;font-size:14px;cursor:pointer;margin-top:2px;
   }
   .addrow:active{transform:scale(.98)}
   .hiitstart{
-    width:100%;border:0;border-radius:0;padding:11px;font-size:14px;font-weight:700;cursor:pointer;
-    color:#04210f;background:linear-gradient(160deg,#34d399,#22c55e);margin-top:8px;
+    width:100%;border:0;border-radius:0;padding:16px;min-height:52px;font-size:15px;font-weight:700;cursor:pointer;
+    color:#04210f;background:var(--accent);margin-top:8px;letter-spacing:.4px;
   }
   .addtype{display:flex;gap:8px;margin:4px 0 14px}
   .addtype button{
     flex:1;background:var(--panel);border:1px dashed var(--line);color:var(--muted);
-    border-radius:0;padding:12px;font-size:14px;cursor:pointer;
+    border-radius:0;padding:14px;min-height:48px;font-size:14px;cursor:pointer;
   }
   .addtype button:active{transform:scale(.97)}
   .finishbtn{background:linear-gradient(160deg,#34d399,#22c55e)!important;color:#04210f!important}
