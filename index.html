@@ -149,6 +149,13 @@
   #run .next{
     font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-top:26px;min-height:16px;opacity:.45;
   }
+  /* get-ready quote: sentence case, readable, replaces the next-up line */
+  #run .next.quote{
+    text-transform:none;letter-spacing:0;opacity:1;max-width:19rem;margin-left:auto;margin-right:auto;
+    display:flex;flex-direction:column;gap:9px;animation:fade .45s ease;
+  }
+  #run .next.quote .q{font-size:16px;line-height:1.45;font-weight:600;color:var(--text);opacity:.92;text-wrap:balance}
+  #run .next.quote .qby{font-size:10px;letter-spacing:1.6px;text-transform:uppercase;color:var(--ph);opacity:.85}
   #run .totals{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;opacity:.35;text-align:center;margin-bottom:14px;font-variant-numeric:tabular-nums}
   /* compact square system controls — flat, tight radius, still a big tap target */
   #run .runctrls{display:flex;gap:2px;align-items:stretch}
@@ -847,6 +854,7 @@
     audio(); // unlock on user gesture
     engine.seq=seq; engine.idx=0; engine.running=true; engine.paused=false;
     engine.startedAt=Date.now(); engine.workMs=0; engine.completedRounds=0;
+    engine.quote=pickQuote();   // one quote per run, fixed for its whole get-ready
     engine.presetName=presetName||currentPresetName();
     $('#run').classList.add('show');
     document.body.style.background=getComputedStyle(document.documentElement).getPropertyValue('--bg');
@@ -892,10 +900,35 @@
       const n=i+1;
       el.className = p.round===n ? 'cur' : (p.round && n<p.round ? 'on' : '');
     });
-    // next-up
-    const nxt=engine.seq[engine.idx+1];
-    $('#runNext').textContent = nxt ? `Next · ${nxt.label} · ${nxt.dur}s` : 'Next · Finish';
+    // during "get ready" the next-up line carries a quote instead
+    const el=$('#runNext');
+    if(p.type==='prepare'){
+      const q=engine.quote||(engine.quote=pickQuote());
+      el.innerHTML=`<span class="q">“${escapeHtml(q[0])}”</span><span class="qby">${escapeHtml(q[1])}</span>`;
+      el.classList.add('quote');
+    } else {
+      el.classList.remove('quote');
+      const nxt=engine.seq[engine.idx+1];
+      el.textContent = nxt ? `Next · ${nxt.label} · ${nxt.dur}s` : 'Next · Finish';
+    }
   }
+  // short, attributable — no gym-poster filler
+  const QUOTES=[
+    ["I don't count my sit-ups. I only start counting when it starts hurting.","Muhammad Ali"],
+    ["Suffer now and live the rest of your life as a champion.","Muhammad Ali"],
+    ["Somebody may beat me, but they're going to have to bleed to do it.","Steve Prefontaine"],
+    ["To give anything less than your best is to sacrifice the gift.","Steve Prefontaine"],
+    ["Everybody has a plan until they get punched in the mouth.","Mike Tyson"],
+    ["Discipline is doing what you hate to do, but doing it like you love it.","Mike Tyson"],
+    ["It's not whether you get knocked down; it's whether you get up.","Vince Lombardi"],
+    ["Once you learn to quit, it becomes a habit.","Vince Lombardi"],
+    ["Hard work beats talent when talent doesn't work hard.","Tim Notke"],
+    ["I've failed over and over and over again in my life. And that is why I succeed.","Michael Jordan"],
+    ["Do not pray for an easy life; pray for the strength to endure a difficult one.","Bruce Lee"],
+    ["Champions keep playing until they get it right.","Billie Jean King"],
+    ["The fight is won far from witnesses, long before I dance under those lights.","Muhammad Ali"]
+  ];
+  function pickQuote(){ return QUOTES[Math.floor(Math.random()*QUOTES.length)]; }
   function paintTime(sec){
     const whole=Math.ceil(sec);
     const el=$('#runTime');
