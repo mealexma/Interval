@@ -396,6 +396,26 @@
   }
   .rangepicker button.active{color:var(--accent);background:rgba(34,197,94,.1)}
   .chart-card{background:transparent;border:0;border-radius:0;padding:6px 0 10px;margin-bottom:14px}
+  /* ---- effort per workout (log tab) ---- */
+  .effhead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:12px}
+  .effsum{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;text-align:right}
+  .effsum b{color:var(--text);font-weight:800}
+  .effortchart{margin-bottom:10px}
+  .effortchart svg{width:100%;height:150px;display:block;overflow:visible}
+  .effaxis{display:flex;justify-content:space-between;padding:7px 0 0;font-size:10px;color:var(--muted);
+    letter-spacing:.6px;text-transform:uppercase}
+  .bar-hiit{fill:var(--accent)}
+  .bar-sets{fill:#2f6b46}
+  .bar-hit{fill:transparent;cursor:pointer}
+  .bar-sel{fill:rgba(255,255,255,.1)}
+  .eff-grid{stroke:var(--line);stroke-width:1}
+  .eff-avg{stroke:#93a3b5;stroke-width:1.5;stroke-dasharray:4 4;fill:none}
+  .eff-ylab{fill:var(--muted);font-size:9px;font-family:system-ui,sans-serif}
+  .efflegend{display:flex;gap:16px;font-size:11px;color:var(--muted);margin-bottom:4px;flex-wrap:wrap}
+  .efflegend i{display:inline-block;width:10px;height:10px;margin-right:6px;vertical-align:-1px}
+  .efflegend .k-hiit{background:var(--accent)}
+  .efflegend .k-sets{background:#2f6b46}
+  .efflegend .k-avg{background:linear-gradient(90deg,#93a3b5 0 4px,transparent 4px 8px,#93a3b5 8px);height:2px;vertical-align:3px}
   .chart-card h2{margin:0 0 10px 4px;font-size:13px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted)}
   .chart-card svg{width:100%;height:140px;display:block}
   .chart-card .axis{display:flex;justify-content:space-between;padding:6px 4px 0;font-size:11px;color:var(--muted)}
@@ -531,10 +551,27 @@
 
     <!-- ===== LOG ===== -->
     <section id="log" class="view">
-      <h2 class="sectiontitle">Lifetime</h2>
-      <div class="stats-grid" id="funStats"></div>
+      <div class="effhead">
+        <h2 class="sectiontitle" style="margin:0">Effort per workout</h2>
+        <span class="effsum" id="effortSummary"></span>
+      </div>
+      <div class="effortchart">
+        <svg id="effortSvg" viewBox="0 0 320 150" preserveAspectRatio="none" role="img" aria-label="Effort per workout"></svg>
+        <div class="effaxis" id="effortAxis"></div>
+      </div>
+      <div class="rangepicker" id="effortRange">
+        <button data-n="12" class="active">12</button>
+        <button data-n="30">30</button>
+        <button data-n="60">60</button>
+        <button data-n="all">All</button>
+      </div>
+      <div class="efflegend">
+        <span><i class="k-hiit"></i>HIIT runs</span>
+        <span><i class="k-sets"></i>Sets</span>
+        <span class="effavg-key"><i class="k-avg"></i>Average</span>
+      </div>
 
-      <h2 class="sectiontitle" style="margin-top:22px">Sessions</h2>
+      <h2 class="sectiontitle" style="margin-top:26px">Sessions</h2>
       <div id="sessionLogList"></div>
 
       <div class="linkrow" style="margin-top:22px">
@@ -1337,7 +1374,7 @@
     if(wipe) wipe.addEventListener('click',()=>{
       if(!confirm(`Remove all ${n} imported day${n===1?'':'s'}? Workouts you logged in this app are kept.`)) return;
       saveSessions(getSessions().filter(s=>s.source!=='import'));
-      renderHistManage(); renderHistPreview(); renderSessionLog(); renderFunStats(); renderDashboard();
+      renderHistManage(); renderHistPreview(); renderSessionLog(); renderEffortChart(); renderDashboard();
       toast('Imported days removed');
     });
   }
@@ -1366,7 +1403,7 @@
     arr.sort((a,b)=>b.startedAt-a.startedAt);
     saveSessions(arr);
     $('#histText').value='';
-    renderHistPreview(); renderHistManage(); renderSessionLog(); renderFunStats(); renderDashboard();
+    renderHistPreview(); renderHistManage(); renderSessionLog(); renderEffortChart(); renderDashboard();
     toast(`Imported ${fresh.length} day${fresh.length===1?'':'s'}`);
   });
 
@@ -1923,31 +1960,83 @@
       return `<div class="ditem"><b>${escapeHtml(it.name)}</b><div class="dsub">HIIT · ran ${it.runs||0}×${mv?' · '+mv:''}</div></div>`;
     }).join('') || '<div class="dsub">No exercises logged.</div>';
   }
-  function renderFunStats(){
-    const el=$('#funStats'); if(!el) return;
-    const sessions=getSessions();
-    let vol=0, sets=0, runs=0; const freq={};
-    sessions.forEach(s=>{
-      vol+=sessionVolume(s); sets+=sessionSetCount(s);
-      s.items.forEach(it=>{
-        if(it.type==='hiit'){ runs+=it.runs||0; (it.moves||[]).forEach(m=>freq[m.name]=(freq[m.name]||0)+1); }
-        else freq[it.name]=(freq[it.name]||0)+1;
+  // ---------- Effort per workout ----------
+  // one bar per session, stacked: HIIT runs above strength sets. Both are
+  // "things you actually did", so they share one scale.
+  let effortRange='12';
+  function sessionEffort(s){
+    let runs=0, sets=0;
+    s.items.forEach(it=>{
+      if(it.type==='hiit') runs+=it.runs||0;
+      else sets+=it.sets.length;
+    });
+    return {runs, sets, total:runs+sets};
+  }
+  function renderEffortChart(){
+    const svg=$('#effortSvg'); if(!svg) return;
+    const all=getSessions().filter(s=>!(s.source==='import'&&!s.items.length))
+                           .slice().sort((a,b)=>a.startedAt-b.startedAt);
+    const n = effortRange==='all' ? all.length : parseInt(effortRange,10);
+    const data=all.slice(-n).map(s=>Object.assign({s}, sessionEffort(s)));
+    const axis=$('#effortAxis'), sum=$('#effortSummary');
+
+    if(!data.length){
+      svg.innerHTML='';
+      axis.textContent='';
+      sum.textContent='';
+      svg.insertAdjacentHTML('beforeend',
+        '<text x="160" y="78" text-anchor="middle" class="eff-ylab" style="font-size:11px">No workouts logged yet</text>');
+      return;
+    }
+
+    const W=320,H=150, padL=22,padR=4,padT=10,padB=2;
+    const plotW=W-padL-padR, plotH=H-padT-padB;
+    const max=Math.max(...data.map(d=>d.total));
+    const top=Math.max(1, Math.ceil(max/5)*5);          // round the scale up to a clean 5
+    const y=v=>padT+plotH*(1-v/top);
+    const step=plotW/data.length;
+    const bw=Math.max(2, Math.min(26, step*0.68));
+    const avg=data.reduce((a,d)=>a+d.total,0)/data.length;
+
+    let g='';
+    // gridlines + y labels at 0, half, top — every label names a value the scale reaches
+    [0, top/2, top].forEach(v=>{
+      g+=`<line class="eff-grid" x1="${padL}" y1="${y(v).toFixed(1)}" x2="${W-padR}" y2="${y(v).toFixed(1)}"/>`;
+      g+=`<text class="eff-ylab" x="${padL-5}" y="${(y(v)+3).toFixed(1)}" text-anchor="end">${v}</text>`;
+    });
+    data.forEach((d,i)=>{
+      const cx=padL+step*i+step/2, x=cx-bw/2;
+      const hSets=(d.sets/top)*plotH, hRuns=(d.runs/top)*plotH;
+      const yTop=y(d.total);
+      if(d.runs) g+=`<rect class="bar-hiit" x="${x.toFixed(1)}" y="${yTop.toFixed(1)}" width="${bw.toFixed(1)}" height="${hRuns.toFixed(1)}"/>`;
+      if(d.sets) g+=`<rect class="bar-sets" x="${x.toFixed(1)}" y="${(yTop+hRuns).toFixed(1)}" width="${bw.toFixed(1)}" height="${hSets.toFixed(1)}"/>`;
+      // full-height invisible hit area so thin bars are still tappable
+      g+=`<rect class="bar-hit" x="${(cx-step/2).toFixed(1)}" y="${padT}" width="${step.toFixed(1)}" height="${plotH}" data-i="${i}"/>`;
+    });
+    g+=`<line class="eff-avg" x1="${padL}" y1="${y(avg).toFixed(1)}" x2="${W-padR}" y2="${y(avg).toFixed(1)}"/>`;
+    svg.innerHTML=g;
+
+    const fmt=t=>{ const d=new Date(t); return `${d.getDate()} ${MON_NAMES[d.getMonth()]}`; };
+    axis.innerHTML=`<span>${fmt(data[0].s.startedAt)}</span><span>${fmt(data[data.length-1].s.startedAt)}</span>`;
+    sum.innerHTML=`<b>${data.length}</b> workouts · avg <b>${avg.toFixed(1)}</b>`;
+
+    svg.querySelectorAll('.bar-hit').forEach(r=>{
+      r.addEventListener('click',()=>{
+        const d=data[+r.dataset.i];
+        const bits=[];
+        if(d.runs) bits.push(`${d.runs} HIIT run${d.runs===1?'':'s'}`);
+        if(d.sets) bits.push(`${d.sets} set${d.sets===1?'':'s'}`);
+        toast(`${fmt(d.s.startedAt)} · ${bits.join(' · ')||'no activity'}`);
       });
     });
-    const top=Object.entries(freq).sort((a,b)=>b[1]-a[1])[0];
-    const best=sessions.reduce((m,s)=>Math.max(m,sessionVolume(s)),0);
-    const tonnes=vol>=1000?(vol/1000).toFixed(1)+' t':vol+' kg';
-    const stats=[
-      ['🏋️', tonnes, 'lifted all-time'],
-      ['🔥', computeSessionStreak(sessions)+'', 'day streak'],
-      ['💪', sessions.length+'', 'workouts'],
-      ['📊', sets+'', 'sets logged'],
-      ['⚡', runs+'', 'HIIT runs'],
-      ['🏆', top?escapeHtml(top[0]):'—', top?`favourite (${top[1]}×)`:'favourite'],
-      ['👑', best?best+' kg':'—', 'biggest session'],
-    ];
-    el.innerHTML=stats.map(([emo,b,sub])=>`<div class="stat"><b>${emo} ${b}</b><span>${sub}</span></div>`).join('');
   }
+  $$('#effortRange button').forEach(b=>{
+    b.addEventListener('click',()=>{
+      effortRange=b.dataset.n;
+      $$('#effortRange button').forEach(x=>x.classList.toggle('active', x===b));
+      renderEffortChart();
+    });
+  });
   function renderSessionLog(){
     const sessions=getSessions();
     const list=$('#sessionLogList');
@@ -1992,7 +2081,7 @@
     $('#tabLog').classList.toggle('active', name==='log');
     if(name==='dashboard') renderDashboard();
     if(name==='workout') renderWorkout();
-    if(name==='log'){ renderFunStats(); renderSessionLog(); renderLog(); }
+    if(name==='log'){ renderEffortChart(); renderSessionLog(); renderLog(); }
   }
   $('#tabDash').addEventListener('click',()=>showView('dashboard'));
   $('#tabWorkout').addEventListener('click',()=>showView('workout'));
