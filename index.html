@@ -113,27 +113,29 @@
   #run.show{display:flex}
   /* phase colour is an accent on the dark shell (--ph), not a full-screen flood */
   #run{--ph:var(--work);background:var(--bg)}
-  #run::before{ /* soft phase-tinted bloom behind the ring */
-    content:"";position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);
+  /* phase-tinted bloom behind the ring, beaten once per second from JS */
+  #run .bloom{
+    position:absolute;left:50%;top:46%;z-index:0;
+    transform:translate(-50%,-50%) scale(.74);
     width:min(120vw,620px);aspect-ratio:1;border-radius:50%;pointer-events:none;
     background:radial-gradient(circle,var(--ph) 0%,transparent 72%);
-    transition:background .35s ease;
-    animation:bloompulse 1.7s cubic-bezier(.36,.7,.2,1) infinite;
+    opacity:.18;transition:background .35s ease;
   }
-  /* double-beat: hit, partial settle, hit again, then rest */
-  @keyframes bloompulse{
-    0%  {transform:translate(-50%,-50%) scale(.58);opacity:.10}
-    12% {transform:translate(-50%,-50%) scale(1.20);opacity:.62}
-    28% {transform:translate(-50%,-50%) scale(.86);opacity:.30}
-    40% {transform:translate(-50%,-50%) scale(1.14);opacity:.55}
-    70% {transform:translate(-50%,-50%) scale(.72);opacity:.16}
-    100%{transform:translate(-50%,-50%) scale(.58);opacity:.10}
+  #run .bloom.beat{animation:bloombeat .82s cubic-bezier(.22,.9,.3,1)}
+  #run .bloom.beat.hot{animation-duration:.5s}
+  @keyframes bloombeat{
+    0%  {transform:translate(-50%,-50%) scale(.74);opacity:.18}
+    16% {transform:translate(-50%,-50%) scale(1.22);opacity:.68}
+    100%{transform:translate(-50%,-50%) scale(.74);opacity:.18}
   }
-  #run.paused::before{animation-play-state:paused}
   @media (prefers-reduced-motion:reduce){
-    #run::before{animation:none}
-    #run .phase.slam,#run .switch.go,#run .ring.snap .prog{animation:none}
-    #run .switch.go{opacity:0}
+    /* keep the beat, drop the travel: opacity only, no scaling */
+    @keyframes bloombeat{
+      0%{opacity:.18}16%{opacity:.62}100%{opacity:.18}
+    }
+    #run .bloom,#run .bloom.beat{transform:translate(-50%,-50%)}
+    #run .phase.slam,#run .ring.snap .prog{animation:none}
+    #run .switch.go{animation:switchflash 1.5s steps(2,end)}
   }
   #run>*{position:relative;z-index:1}
   #run .topline{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
@@ -608,6 +610,7 @@
 
 <!-- ===== RUN ===== -->
 <div id="run">
+  <div class="bloom" id="runBloom" aria-hidden="true"></div>
   <div class="topline">
     <span class="metric" id="runSet"><b>1/1</b><small>set</small></span>
     <div class="dots" id="runDots"></div>
@@ -1075,6 +1078,12 @@
     if(settings.halfway && p.dur>=8 && sec<=p.dur/2) return WORK2;
     return engine.baseColor;
   }
+  // retrigger the bloom animation on each whole second so it stays in time
+  function beatBloom(hot){
+    const b=$('#runBloom'); if(!b) return;
+    b.classList.remove('beat','hot'); void b.offsetWidth;
+    b.classList.add('beat'); if(hot) b.classList.add('hot');
+  }
   function flashSwitch(){
     const el=$('#runSwitch'), ring=$('.ring');
     el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
@@ -1087,6 +1096,7 @@
     const el=$('#runTime');
     if(el.textContent!==String(whole)){
       el.textContent=whole;
+      beatBloom(whole<=10 && whole>0);   // one beat per second, in step with the countdown
       // pulse the number on each of the last three ticks
       if(whole<=3 && whole>0 && !engine.paused){
         el.classList.remove('tick'); void el.offsetWidth; el.classList.add('tick');
