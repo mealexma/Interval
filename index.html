@@ -41,13 +41,13 @@
   }
   header.bar h1{font-size:22px;font-weight:800;margin:0;display:flex;align-items:center;gap:9px;letter-spacing:-.3px}
   header.bar .logo{
-    width:30px;height:30px;border-radius:4px;
+    width:30px;height:30px;border-radius:0;
     background:linear-gradient(160deg,#ef4444,#f97316);
     display:grid;place-items:center;font-size:18px;
   }
   .iconbtn{
     background:transparent; border:0; color:var(--text);
-    width:40px;height:40px;border-radius:4px;font-size:18px;display:grid;place-items:center;cursor:pointer;
+    width:40px;height:40px;border-radius:0;font-size:18px;display:grid;place-items:center;cursor:pointer;
   }
   .iconbtn:active{transform:scale(.94)}
 
@@ -69,7 +69,7 @@
   .stepper .lbl small{display:block;color:var(--muted);font-size:12px;margin-top:1px}
   .ctrls{display:flex;align-items:center;gap:12px}
   .ctrls button{
-    width:38px;height:38px;border-radius:4px;border:0;
+    width:38px;height:38px;border-radius:0;border:0;
     background:var(--panel2);color:var(--text);font-size:22px;line-height:1;cursor:pointer;
     display:grid;place-items:center;
   }
@@ -80,7 +80,7 @@
   .presets{display:flex;flex-wrap:wrap;gap:8px}
   .chip{
     background:var(--panel2);border:0;color:var(--text);
-    padding:8px 13px;border-radius:4px;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:7px;
+    padding:8px 13px;border-radius:0;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:7px;
   }
   .chip.active{color:#bbf7d0;background:rgba(34,197,94,.18)}
   .chip:active{transform:scale(.96)}
@@ -89,7 +89,7 @@
   .saverow{display:flex;gap:8px;margin-top:12px}
   input[type=text],input[type=search]{
     flex:1;background:var(--panel2);border:0;color:var(--text);
-    border-radius:4px;padding:10px 12px;font-size:15px;-webkit-user-select:text;user-select:text;
+    border-radius:0;padding:10px 12px;font-size:15px;-webkit-user-select:text;user-select:text;
   }
   input[type=text]:focus,input[type=search]:focus{outline:none;box-shadow:inset 0 0 0 2px var(--accent)}
   #exPickerSearch{width:100%;margin-bottom:12px;-webkit-appearance:none;appearance:none}
@@ -98,7 +98,7 @@
   .estimate b{color:var(--text);font-variant-numeric:tabular-nums}
 
   .bigbtn{
-    width:100%;border:0;border-radius:4px;padding:18px;font-size:19px;font-weight:700;cursor:pointer;
+    width:100%;border:0;border-radius:0;padding:18px;font-size:19px;font-weight:700;cursor:pointer;
     color:#04210f;background:linear-gradient(160deg,#34d399,#22c55e);letter-spacing:.3px;
   }
   .bigbtn:active{transform:scale(.985)}
@@ -126,7 +126,7 @@
   #run .metric small{font-size:9px;letter-spacing:1.4px;text-transform:uppercase;opacity:.5;margin-top:3px}
   /* one bar per round — fills as you go */
   #run .dots{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;align-content:flex-start;flex:1;padding-top:7px;max-height:34px;overflow:hidden}
-  #run .dots i{width:14px;height:4px;border-radius:2px;background:rgba(255,255,255,.16);transition:background .25s ease,box-shadow .25s ease}
+  #run .dots i{width:14px;height:4px;border-radius:0;background:rgba(255,255,255,.16);transition:background .25s ease,box-shadow .25s ease}
   #run .dots i.on{background:rgba(255,255,255,.5)}
   #run .dots i.cur{background:var(--ph);box-shadow:0 0 8px color-mix(in srgb,var(--ph) 70%,transparent)}
   #run .center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
@@ -160,7 +160,7 @@
   /* compact square system controls — flat, tight radius, still a big tap target */
   #run .runctrls{display:flex;gap:2px;align-items:stretch}
   #run .runctrls button{
-    flex:1;border:0;border-radius:4px;padding:20px 0;font-size:17px;font-weight:700;color:var(--text);
+    flex:1;border:0;border-radius:0;padding:20px 0;font-size:17px;font-weight:700;color:var(--text);
     background:rgba(255,255,255,.07);cursor:pointer;line-height:1;
   }
   #run .runctrls button:active{background:rgba(255,255,255,.16)}
@@ -190,7 +190,7 @@
   #done .stats b{display:block;font-size:24px;font-variant-numeric:tabular-nums}
   #done .stats span{font-size:12px;color:var(--muted)}
   #done .row{display:flex;gap:10px;width:100%;max-width:340px}
-  #done .row button{flex:1;border-radius:4px;padding:15px;border:0;font-size:16px;font-weight:700;cursor:pointer}
+  #done .row button{flex:1;border-radius:0;padding:15px;border:0;font-size:16px;font-weight:700;cursor:pointer}
   #done .again{background:linear-gradient(160deg,#34d399,#22c55e);color:#04210f;border:0}
   #done .close{background:var(--panel);color:var(--text)}
 
@@ -212,7 +212,7 @@
   .ditem{margin-bottom:8px}
   .ditem b{font-size:13px}
   .dsub{color:var(--muted);font-size:12px;margin-top:2px}
-  .logitem .meta .tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:3px;margin-left:6px;vertical-align:middle}
+  .logitem .meta .tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:0;margin-left:6px;vertical-align:middle}
   .tag.partial{background:rgba(245,158,11,.16);color:#fcd34d}
   .tag.done{background:rgba(34,197,94,.16);color:#86efac}
   .tag.imported{background:rgba(147,163,181,.16);color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-size:10px;font-weight:700}
@@ -224,7 +224,7 @@
   .empty{text-align:center;color:var(--muted);padding:48px 16px}
   .empty .em{font-size:46px;display:block;margin-bottom:10px}
   .linkrow{display:flex;gap:8px;margin-top:6px}
-  .linkbtn{flex:1;background:transparent;border:0;color:var(--muted);border-radius:4px;padding:11px;font-size:14px;font-weight:600;cursor:pointer}
+  .linkbtn{flex:1;background:transparent;border:0;color:var(--muted);border-radius:0;padding:11px;font-size:14px;font-weight:600;cursor:pointer}
   .linkbtn:active{transform:scale(.97)}
   .linkbtn.danger{color:#fca5a5}
 
@@ -259,7 +259,7 @@
   .sw::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .2s}
   .sw.on{background:var(--accent)}
   .sw.on::after{transform:translateX(20px)}
-  #settings .done-btn{width:100%;margin-top:16px;border:0;border-radius:4px;padding:14px;font-size:16px;font-weight:700;background:var(--panel2);color:var(--text);cursor:pointer}
+  #settings .done-btn{width:100%;margin-top:16px;border:0;border-radius:0;padding:14px;font-size:16px;font-weight:700;background:var(--panel2);color:var(--text);cursor:pointer}
   .credit{text-align:center;color:var(--muted);font-size:12px;margin-top:14px}
   /* ---- exercise picker sheet ---- */
   #exPicker{position:fixed;inset:0;z-index:75;display:none;align-items:flex-end}
@@ -273,22 +273,22 @@
   }
   #exPicker h2{margin:2px 0 14px;font-size:18px}
   .pickitem{display:flex;gap:8px;margin-bottom:8px}
-  .pickrow{flex:1;text-align:left;background:var(--panel2);border:0;color:var(--text);border-radius:4px;padding:14px;font-size:15px;cursor:pointer;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pickrow{flex:1;text-align:left;background:var(--panel2);border:0;color:var(--text);border-radius:0;padding:14px;font-size:15px;cursor:pointer;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .pickrow:active{transform:scale(.98)}
-  .pickcat{flex:none;width:96px;background:var(--panel2);border:0;color:var(--muted);border-radius:4px;font-size:12px;padding:0 6px;cursor:pointer}
-  .pickkind{flex:none;width:38px;background:var(--panel2);border:0;color:var(--muted);border-radius:4px;font-size:14px;cursor:pointer}
+  .pickcat{flex:none;width:96px;background:var(--panel2);border:0;color:var(--muted);border-radius:0;font-size:12px;padding:0 6px;cursor:pointer}
+  .pickkind{flex:none;width:38px;background:var(--panel2);border:0;color:var(--muted);border-radius:0;font-size:14px;cursor:pointer}
   .pickkind:active{transform:scale(.94);color:var(--accent)}
   .kindtag{margin-left:8px;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--accent)}
-  .pickdel{flex:none;width:46px;background:transparent;border:0;color:var(--muted);border-radius:4px;font-size:15px;cursor:pointer}
+  .pickdel{flex:none;width:46px;background:transparent;border:0;color:var(--muted);border-radius:0;font-size:15px;cursor:pointer}
   .pickdel:active{transform:scale(.94);color:var(--danger)}
   /* category groups in the picker — collapsed by default */
-  .pickgroup{border:0;border-radius:4px;margin-bottom:4px;overflow:hidden}
+  .pickgroup{border:0;border-radius:0;margin-bottom:4px;overflow:hidden}
   .pickgrouphd{display:flex;align-items:center;gap:8px;padding:10px 4px;cursor:pointer;background:transparent;-webkit-user-select:none;user-select:none}
   .pickgrouphd b{font-size:14px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .pickgrouphd .chev{color:var(--muted);font-size:11px;transition:transform .18s ease}
   .pickgroup:not(.open) .pickgrouphd .chev{transform:rotate(-90deg)}
   .pickgrouphd .gcount{font-size:11px;color:var(--muted);padding:2px 4px;}
-  .catedit{flex:none;width:30px;height:30px;border-radius:4px;border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:13px}
+  .catedit{flex:none;width:30px;height:30px;border-radius:0;border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:13px}
   .pickgroupbody{display:none;padding:10px 10px 2px}
   .pickgroup.open .pickgroupbody{display:block}
 
@@ -306,7 +306,7 @@
   .hhint{color:var(--muted);font-size:13px;margin:0 0 12px;line-height:1.5}
   #histText{
     width:100%;min-height:132px;resize:vertical;background:var(--panel2);border:0;color:var(--text);
-    border-radius:4px;padding:12px;font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;
+    border-radius:0;padding:12px;font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;
     -webkit-user-select:text;user-select:text;
   }
   #histText:focus{outline:none;box-shadow:inset 0 0 0 2px var(--accent)}
@@ -318,7 +318,7 @@
   #histManage button{background:transparent;border:0;color:#fca5a5;font-size:13px;font-weight:600;cursor:pointer;padding:6px 0}
   .toast{
     position:fixed;left:50%;bottom:calc(var(--safe-b) + 92px);transform:translateX(-50%) translateY(20px);
-    background:var(--panel2);border:0;color:var(--text);padding:11px 18px;border-radius:4px;
+    background:var(--panel2);border:0;color:var(--text);padding:11px 18px;border-radius:0;
     font-size:14px;opacity:0;pointer-events:none;transition:.25s;z-index:80;max-width:90vw;
   }
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -333,7 +333,7 @@
   .heatmonths{display:grid;grid-auto-flow:column;grid-auto-columns:14px;font-size:10px;color:var(--muted);margin-bottom:5px}
   .heatmonths span{white-space:nowrap;overflow:visible}
   .heatgrid{display:grid;grid-template-rows:repeat(7,11px);grid-auto-flow:column;grid-auto-columns:14px;row-gap:3px}
-  .heatgrid i,.heatlegend i{width:11px;height:11px;border-radius:3px;background:#141c26;display:inline-block}
+  .heatgrid i,.heatlegend i{width:11px;height:11px;border-radius:0;background:#141c26;display:inline-block}
   .hm1{background:#0e4429!important}
   .hm2{background:#006d32!important}
   .hm3{background:#26a641!important;box-shadow:0 0 5px rgba(38,166,65,.35)}
@@ -344,7 +344,7 @@
   .rangepicker{display:flex;gap:6px;margin-bottom:14px}
   .rangepicker button{
     flex:1;background:transparent;border:0;color:var(--muted);
-    border-radius:4px;padding:9px 0;font-size:13px;font-weight:600;cursor:pointer;
+    border-radius:0;padding:9px 0;font-size:13px;font-weight:600;cursor:pointer;
   }
   .rangepicker button.active{color:var(--accent);background:rgba(34,197,94,.1)}
   .chart-card{background:transparent;border:0;border-radius:0;padding:6px 0 10px;margin-bottom:14px}
@@ -375,13 +375,13 @@
   .itemcard.collapsed .cardbody{grid-template-rows:0fr}
   .itemcard.collapsed .cardbody-inner{opacity:0}
   .itemcard .ihead .right{display:flex;align-items:center;gap:8px;flex:none}
-  .delx{width:26px;height:26px;border-radius:4px;border:0;background:transparent;color:var(--muted);display:grid;place-items:center;font-size:15px;cursor:pointer;flex:none;padding:0;line-height:1}
+  .delx{width:26px;height:26px;border-radius:0;border:0;background:transparent;color:var(--muted);display:grid;place-items:center;font-size:15px;cursor:pointer;flex:none;padding:0;line-height:1}
   .delx:active{transform:scale(.9);color:var(--danger);border-color:var(--danger)}
   .itemcard.done .ihead b{color:var(--muted);text-decoration:line-through}
   .itemcard .ihead b{font-size:18px;font-weight:800;letter-spacing:-.3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .itemcard .ihead .badge{font-size:11px;color:var(--muted);background:transparent;padding:3px 0;white-space:nowrap}
   .itemcard .ihead .badge.ok{color:#04210f;background:var(--accent)}
-  .swipe{position:relative;overflow:hidden;border-radius:4px}
+  .swipe{position:relative;overflow:hidden;border-radius:0}
   .swipe-del{position:absolute;inset:0 0 0 auto;width:84px;border:0;background:var(--danger);color:#fff;font-weight:700;font-size:13px;cursor:pointer}
   .swipe-del:active{filter:brightness(.9)}
   .setrow{display:grid;grid-template-columns:1fr 64px 64px 34px;gap:7px;align-items:center;padding:5px 4px;background:var(--bg);position:relative;transition:transform .18s ease;touch-action:pan-y}
@@ -392,28 +392,28 @@
   .setrow .si{color:var(--muted);font-size:13px}
   .setrow input[type=number],.setrow input[type=text]{
     width:100%;background:transparent;border:0;color:var(--text);
-    border-radius:4px;padding:8px 4px;font-size:16px;font-weight:700;text-align:center;-webkit-user-select:text;user-select:text;
+    border-radius:0;padding:8px 4px;font-size:16px;font-weight:700;text-align:center;-webkit-user-select:text;user-select:text;
   }
   .setrow input[type=number]:focus,.setrow input[type=text]:focus{outline:none;box-shadow:inset 0 0 0 2px var(--accent)}
   .check{
-    width:30px;height:30px;border-radius:4px;border:0;background:var(--panel2);
+    width:30px;height:30px;border-radius:0;border:0;background:var(--panel2);
     display:grid;place-items:center;cursor:pointer;color:transparent;font-size:15px;
   }
   .check.on{background:var(--accent);border-color:var(--accent);color:#04210f}
   .check:active{transform:scale(.92)}
   .addrow{
     width:100%;background:transparent;border:0;color:var(--muted);
-    border-radius:4px;padding:9px;font-size:13px;cursor:pointer;margin-top:2px;
+    border-radius:0;padding:9px;font-size:13px;cursor:pointer;margin-top:2px;
   }
   .addrow:active{transform:scale(.98)}
   .hiitstart{
-    width:100%;border:0;border-radius:4px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;
+    width:100%;border:0;border-radius:0;padding:11px;font-size:14px;font-weight:700;cursor:pointer;
     color:#04210f;background:linear-gradient(160deg,#34d399,#22c55e);margin-top:8px;
   }
   .addtype{display:flex;gap:8px;margin:4px 0 14px}
   .addtype button{
     flex:1;background:var(--panel);border:1px dashed var(--line);color:var(--muted);
-    border-radius:4px;padding:12px;font-size:14px;cursor:pointer;
+    border-radius:0;padding:12px;font-size:14px;cursor:pointer;
   }
   .addtype button:active{transform:scale(.97)}
   .finishbtn{background:linear-gradient(160deg,#34d399,#22c55e)!important;color:#04210f!important}
