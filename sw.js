@@ -1,13 +1,14 @@
 /* Interval — HIIT Timer. Service worker: cache-first app shell, fully offline after first load. */
 'use strict';
 
-const CACHE_NAME = 'interval-hiit-v22';
+const CACHE_NAME = 'interval-hiit-v23';
 const SHELL = [
   './',
   './index.html',
   './manifest.json',
   './icon-192.png',
-  './icon-512.png'
+  './icon-512.png',
+  './icon-maskable-512.png'
 ];
 
 self.addEventListener('install', (event) => {
