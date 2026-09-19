@@ -116,14 +116,14 @@
   #run::before{ /* soft phase-tinted bloom behind the ring */
     content:"";position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);
     width:min(120vw,620px);aspect-ratio:1;border-radius:50%;pointer-events:none;
-    background:radial-gradient(circle,color-mix(in srgb,var(--ph) 26%,transparent) 0%,transparent 68%);
-    transition:background .35s ease;
-    animation:bloompulse 2.6s ease-in-out infinite;
+    background:radial-gradient(circle,var(--ph) 0%,transparent 70%);
+    opacity:.2;transition:background .35s ease;
+    animation:bloompulse 2.4s ease-in-out infinite;
   }
   /* the glow breathes small -> large so the screen never sits still */
   @keyframes bloompulse{
-    0%,100%{transform:translate(-50%,-50%) scale(.82);opacity:.55}
-    50%{transform:translate(-50%,-50%) scale(1.06);opacity:1}
+    0%,100%{transform:translate(-50%,-50%) scale(.72);opacity:.12}
+    50%{transform:translate(-50%,-50%) scale(1.1);opacity:.34}
   }
   #run.paused::before{animation-play-state:paused}
   @media (prefers-reduced-motion:reduce){
@@ -138,10 +138,10 @@
   #run .metric b{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.3px}
   #run .metric small{font-size:9px;letter-spacing:1.4px;text-transform:uppercase;opacity:.5;margin-top:3px}
   /* one bar per round — fills as you go */
-  #run .dots{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;align-content:flex-start;flex:1;padding-top:7px;max-height:34px;overflow:hidden}
-  #run .dots i{width:14px;height:4px;border-radius:0;background:rgba(255,255,255,.16);transition:background .25s ease,box-shadow .25s ease}
+  #run .dots{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;align-content:flex-start;flex:1;padding-top:7px;max-height:38px;overflow:hidden}
+  #run .dots i{width:18px;height:7px;border-radius:0;background:rgba(255,255,255,.16);transition:background .25s ease,box-shadow .25s ease}
   #run .dots i.on{background:rgba(255,255,255,.5)}
-  #run .dots i.cur{background:var(--ph);box-shadow:0 0 8px color-mix(in srgb,var(--ph) 70%,transparent)}
+  #run .dots i.cur{background:var(--ph);box-shadow:0 0 9px var(--ph)}
   #run .center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
   #run .phase{
     font-size:13px;font-weight:800;letter-spacing:5px;text-transform:uppercase;
@@ -160,13 +160,15 @@
   .ring svg{transform:rotate(-90deg);width:100%;height:100%;overflow:visible}
   .ring .track{stroke:rgba(255,255,255,.09)}
   .ring .prog{
-    stroke:var(--ph);stroke-linecap:round;transition:stroke-dashoffset .12s linear,stroke .35s ease;
-    filter:drop-shadow(0 0 7px color-mix(in srgb,var(--ph) 65%,transparent));
+    stroke:var(--ph);stroke-linecap:butt;transition:stroke-dashoffset .12s linear,stroke .3s ease;
+    filter:drop-shadow(0 0 8px var(--ph));
   }
+  /* amber blink in the last 10s must switch instantly, not fade */
+  #run.warn .ring .prog,#run.warn .dots i.cur{transition:stroke-dashoffset .12s linear}
   /* bright head riding the leading edge of the arc */
   .ring .comet{
     fill:#fff;transition:fill .35s ease;
-    filter:drop-shadow(0 0 9px color-mix(in srgb,var(--ph) 90%,transparent));
+    filter:drop-shadow(0 0 10px var(--ph));
   }
   #run.paused .ring .comet{opacity:.3}
   .ring .halftick{stroke:rgba(255,255,255,.55);opacity:0;transition:opacity .25s ease}
@@ -563,10 +565,10 @@
     <div class="phase" id="runPhase">Work</div>
     <div class="ring">
       <svg viewBox="0 0 120 120">
-        <circle class="track" cx="60" cy="60" r="54" fill="none" stroke-width="4"/>
-        <circle class="prog" id="ringProg" cx="60" cy="60" r="54" fill="none" stroke-width="4"/>
-        <line class="halftick" id="ringHalf" x1="60" y1="2" x2="60" y2="12" stroke-width="3"/>
-        <circle class="comet" id="ringComet" r="5"/>
+        <circle class="track" cx="60" cy="60" r="54" fill="none" stroke-width="10"/>
+        <circle class="prog" id="ringProg" cx="60" cy="60" r="54" fill="none" stroke-width="10"/>
+        <line class="halftick" id="ringHalf" x1="60" y1="1" x2="60" y2="14" stroke-width="4"/>
+        <circle class="comet" id="ringComet" r="6"/>
       </svg>
       <div class="time" id="runTime">20</div>
       <div class="switch" id="runSwitch" aria-hidden="true">SWITCH</div>
@@ -940,6 +942,8 @@
     const p=engine.seq[engine.idx];
     const color=getComputedStyle(document.documentElement).getPropertyValue(PHASE_COLOR[p.type]||'--work').trim();
     const run=$('#run');
+    engine.baseColor=color;
+    engine.curPh=color;
     run.style.setProperty('--ph', color);   // accent only; the shell stays dark
     const phEl=$('#runPhase');
     if(phEl.textContent!==p.label){        // slam only on an actual phase change
@@ -1000,6 +1004,17 @@
     ["The fight is won far from witnesses, long before I dance under those lights.","Muhammad Ali"]
   ];
   function pickQuote(){ return QUOTES[Math.floor(Math.random()*QUOTES.length)]; }
+  const AMBER='#f59e0b', WORK2='#14b8a6';
+  // work intervals escalate: phase colour -> teal past halfway -> amber blink in the last 10s
+  function escalate(p, sec){
+    if(p.type!=='work') return engine.baseColor;
+    const whole=Math.ceil(sec);
+    const warn = whole>0 && whole<=10;
+    $('#run').classList.toggle('warn', warn);
+    if(warn && whole%2===0) return AMBER;
+    if(settings.halfway && p.dur>=8 && sec<=p.dur/2) return WORK2;
+    return engine.baseColor;
+  }
   function flashSwitch(){
     const el=$('#runSwitch'), ring=$('.ring');
     el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
@@ -1020,12 +1035,15 @@
     const p=engine.seq[engine.idx];
     const frac=Math.max(0,Math.min(1, sec/p.dur));
     $('#ringProg').style.strokeDashoffset=CIRC*(1-frac);
-    // comet head rides the end of the remaining arc
-    const ang=(-90 + 360*frac) * Math.PI/180;
+    // comet head rides the end of the remaining arc.
+    // the <svg> already carries rotate(-90deg), so this angle stays in local space.
+    const ang=(360*frac) * Math.PI/180;
     const c=$('#ringComet');
     c.setAttribute('cx', (60 + RING_R*Math.cos(ang)).toFixed(2));
     c.setAttribute('cy', (60 + RING_R*Math.sin(ang)).toFixed(2));
     c.style.opacity = frac>0.002 ? '1' : '0';
+    const want=escalate(p, sec);
+    if(want && want!==engine.curPh){ engine.curPh=want; $('#run').style.setProperty('--ph', want); }
     // totals
     const elapsed=(Date.now()-engine.startedAt)/1000;
     const totalAll=engine.seq.reduce((a,x)=>a+x.dur,0);
